@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Filled dot when activated (digit entered) -->
+    <item android:state_activated="true">
+        <shape android:shape="oval">
+            <solid android:color="#BB86FC"/>
+            <size android:width="16dp" android:height="16dp"/>
+        </shape>
+    </item>
+    <!-- Empty dot (digit not entered) -->
+    <item>
+        <shape android:shape="oval">
+            <stroke android:width="2dp" android:color="#666666"/>
+            <size android:width="16dp" android:height="16dp"/>
+        </shape>
+    </item>
+</selector>
