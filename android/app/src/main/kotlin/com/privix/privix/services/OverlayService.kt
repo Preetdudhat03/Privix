@@ -98,26 +98,22 @@ class OverlayService : Service() {
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-                // FLAGS: 
-                // NOT_TOUCH_MODAL = false → captures ALL touches
-                // LAYOUT_IN_SCREEN → covers status bar area
-                // WATCH_OUTSIDE_TOUCH removed → we want to capture everything
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE.inv() and
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE.inv(),
+                WindowManager.LayoutParams.FLAG_FULLSCREEN or
+                WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
                 PixelFormat.TRANSLUCENT
             ).apply {
                 gravity = Gravity.CENTER
+                // Remove FLAG_NOT_FOCUSABLE implicitly by not adding it, 
+                // but let's be explicit and clear it if it was default (it isn't)
+                flags = flags and WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE.inv()
+                
                 // Cover the entire screen including status bar
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                     layoutInDisplayCutoutMode = 
                         WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
                 }
             }
-
-            // Remove NOT_FOCUSABLE to capture back button and all input
-            params.flags = WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                           WindowManager.LayoutParams.FLAG_FULLSCREEN
 
             windowManager?.addView(overlayView, params)
             isOverlayShowing = true
