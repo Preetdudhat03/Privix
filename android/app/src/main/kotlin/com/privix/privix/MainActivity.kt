@@ -16,7 +16,7 @@ import android.os.PowerManager
 import android.provider.Settings
 import android.util.Base64
 import android.view.accessibility.AccessibilityManager
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import com.privix.privix.services.LockPreferences
@@ -31,7 +31,7 @@ import java.security.MessageDigest
  * All platform channel methods are defined here. Flutter calls these methods
  * to interact with native Android APIs that have no Flutter equivalent.
  */
-class MainActivity : FlutterActivity() {
+class MainActivity : FlutterFragmentActivity() {
 
     companion object {
         private const val CHANNEL = "com.privix.applock/channel"
