@@ -13,7 +13,6 @@ dependencies:
   shared_preferences: ^2.3.5
   local_auth: ^2.3.0
   permission_handler: ^11.3.1
-  device_apps: ^2.2.0
   crypto: ^3.0.6
 
 dev_dependencies:

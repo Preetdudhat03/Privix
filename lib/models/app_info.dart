@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 /// Represents an installed app on the device.
@@ -18,7 +19,7 @@ class AppInfo {
     Uint8List? iconBytes;
     if (map['icon'] != null) {
       try {
-        iconBytes = _decodeBase64(map['icon'] as String);
+        iconBytes = base64Decode(map['icon'] as String);
       } catch (_) {
         iconBytes = null;
       }
@@ -29,13 +30,6 @@ class AppInfo {
       appName: map['appName'] as String,
       icon: iconBytes,
       isLocked: isLocked,
-    );
-  }
-
-  static Uint8List _decodeBase64(String base64String) {
-    // Dart's base64Decode
-    return Uint8List.fromList(
-      List<int>.from(Uri.parse('data:;base64,$base64String').data!.contentAsBytes()),
     );
   }
 }
