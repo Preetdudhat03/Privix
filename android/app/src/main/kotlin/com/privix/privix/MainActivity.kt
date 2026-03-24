@@ -21,7 +21,6 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import com.privix.privix.services.LockPreferences
 import com.privix.privix.services.AppLockAccessibilityService
-import com.privix.privix.services.OverlayService
 import java.io.ByteArrayOutputStream
 import java.security.MessageDigest
 
@@ -148,10 +147,7 @@ class MainActivity : FlutterFragmentActivity() {
                 }
 
                 "openOverlaySettings" -> {
-                    val intent = Intent(
-                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                        Uri.parse("package:$packageName")
-                    )
+                    val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     startActivity(intent)
                     result.success(true)

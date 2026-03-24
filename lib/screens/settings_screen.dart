@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:local_auth/local_auth.dart';
 import '../services/storage_service.dart';
 import '../services/platform_channel_service.dart';
-import 'pin_setup_screen.dart';
 
-/// Settings screen for configuring PIN, biometrics, and relock behavior.
+/// Settings screen for configuring relock behavior and permissions.
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -13,12 +11,8 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _biometricEnabled = false;
-  bool _biometricAvailable = false;
   int _relockTimeout = 0;
   bool _isLoading = true;
-
-  final _localAuth = LocalAuthentication();
 
   static const _relockOptions = [
     {'label': 'Immediately', 'value': 0},
@@ -35,49 +29,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadSettings() async {
-    final biometricEnabled = await StorageService.isBiometricEnabled();
     final relockTimeout = await StorageService.getRelockTimeout();
-
-    bool biometricAvailable = false;
-    try {
-      biometricAvailable = await _localAuth.canCheckBiometrics ||
-          await _localAuth.isDeviceSupported();
-    } catch (_) {}
 
     if (mounted) {
       setState(() {
-        _biometricEnabled = biometricEnabled;
-        _biometricAvailable = biometricAvailable;
         _relockTimeout = relockTimeout;
         _isLoading = false;
       });
     }
-  }
-
-  Future<void> _toggleBiometric(bool value) async {
-    if (value) {
-      // Verify biometric works before enabling
-      try {
-        final authenticated = await _localAuth.authenticate(
-          localizedReason: 'Verify your identity to enable biometric unlock',
-          options: const AuthenticationOptions(
-            stickyAuth: true,
-            biometricOnly: true,
-          ),
-        );
-        if (!authenticated) return;
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Biometric not available: $e')),
-          );
-        }
-        return;
-      }
-    }
-
-    await StorageService.setBiometricEnabled(value);
-    if (mounted) setState(() => _biometricEnabled = value);
   }
 
   Future<void> _setRelockTimeout(int timeoutMs) async {
@@ -141,14 +100,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _changePin() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const PinSetupScreen(),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -168,25 +119,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
             physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.all(16),
             children: [
-              // Security section
-              _buildSectionHeader('Security'),
-              const SizedBox(height: 12),
-              _buildSettingTile(
-                icon: Icons.pin,
-                title: 'Change PIN',
-                subtitle: 'Update your lock screen PIN',
-                onTap: _changePin,
-              ),
-              const SizedBox(height: 8),
-              _buildToggleTile(
-                icon: Icons.fingerprint,
-                title: 'Biometric Unlock',
-                subtitle: _biometricAvailable
-                  ? 'Use fingerprint to unlock apps'
-                  : 'Not available on this device',
-                value: _biometricEnabled,
-                enabled: _biometricAvailable,
-                onToggle: _toggleBiometric,
+              // Security note
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6C63FF).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF6C63FF).withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.lock_person, color: Color(0xFF6C63FF)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        "Privix uses your device's secure lock screen (Fingerprint, Face, PIN).",
+                        style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 24),
 
@@ -214,7 +166,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _buildSettingTile(
                 icon: Icons.layers,
                 title: 'Draw Over Apps',
-                subtitle: 'Manage overlay permission',
+                subtitle: 'Optional background permission',
                 onTap: () => PlatformChannelService.openOverlaySettings(),
               ),
               const SizedBox(height: 8),
@@ -239,7 +191,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 8),
               Center(
                 child: Text(
-                  'All data stored locally on your device',
+                  'Powered by Android System Authentication',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.2),
                     fontSize: 11,
@@ -314,58 +266,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const Icon(Icons.arrow_forward_ios, color: Colors.white30, size: 16),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildToggleTile({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required bool value,
-    required bool enabled,
-    required ValueChanged<bool> onToggle,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1A2E),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF333344)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: const Color(0xFF6C63FF).withOpacity(0.12),
-            ),
-            child: Icon(icon, color: const Color(0xFF6C63FF), size: 20),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title,
-                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
-                const SizedBox(height: 2),
-                Text(subtitle,
-                  style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11)),
-              ],
-            ),
-          ),
-          Switch(
-            value: value,
-            onChanged: enabled ? onToggle : null,
-            activeColor: const Color(0xFF6C63FF),
-            activeTrackColor: const Color(0xFF6C63FF).withOpacity(0.3),
-            inactiveThumbColor: const Color(0xFF555555),
-            inactiveTrackColor: const Color(0xFF333333),
-          ),
-        ],
       ),
     );
   }

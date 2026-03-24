@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'screens/pin_setup_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/app_selection_screen.dart';
 import 'screens/settings_screen.dart';
-import 'services/storage_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,66 +40,12 @@ class PrivixApp extends StatelessWidget {
         ),
         fontFamily: 'Roboto',
       ),
-      home: const AppEntry(),
+      home: const HomeScreen(),
       routes: {
         '/home': (_) => const HomeScreen(),
-        '/pin_setup': (_) => const PinSetupScreen(),
         '/app_selection': (_) => const AppSelectionScreen(),
         '/settings': (_) => const SettingsScreen(),
       },
     );
-  }
-}
-
-/// Entry point that routes to PIN setup or home based on PIN state.
-class AppEntry extends StatefulWidget {
-  const AppEntry({super.key});
-
-  @override
-  State<AppEntry> createState() => _AppEntryState();
-}
-
-class _AppEntryState extends State<AppEntry> {
-  bool _isLoading = true;
-  bool _hasPinSet = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkPinStatus();
-  }
-
-  Future<void> _checkPinStatus() async {
-    try {
-      final isPinSet = await StorageService.isPinSet();
-      if (mounted) {
-        setState(() {
-          _hasPinSet = isPinSet;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-        backgroundColor: Color(0xFF0D0D1A),
-        body: Center(
-          child: CircularProgressIndicator(color: Color(0xFF6C63FF)),
-        ),
-      );
-    }
-
-    if (!_hasPinSet) {
-      return const PinSetupScreen();
-    }
-
-    return const HomeScreen();
   }
 }

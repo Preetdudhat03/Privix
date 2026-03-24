@@ -1,9 +1,15 @@
 package com.privix.privix.services
 
 import android.accessibilityservice.AccessibilityService
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.content.BroadcastReceiver
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
+import com.privix.privix.AuthActivity
+import com.privix.privix.services.UnlockManager
+import com.privix.privix.services.CurtainManager
 
 /**
  * Core detection engine for the app lock.
@@ -43,16 +49,38 @@ class AppLockAccessibilityService : AccessibilityService() {
         @Volatile
         var isRunning = false
             private set
+            
+        // Tracks the app the user is actively exploring across the OS
+        var lastForegroundPackage: String? = null
+        
+        // Cache for locked packages to avoid SharedPreferences reads during transition
+        private var lockedAppsCache: Set<String> = emptySet()
     }
 
     private lateinit var lockPrefs: LockPreferences
     private var lastTriggeredPackage: String? = null
     private var lastTriggerTime: Long = 0
 
+    private val screenOffReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == Intent.ACTION_SCREEN_OFF) {
+                Log.d(TAG, "Screen off: clearing all unlocks")
+                lockPrefs.clearUnlockedApps()
+                UnlockManager.clear()
+                lastForegroundPackage = null // Also reset tracker
+            }
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         lockPrefs = LockPreferences(this)
         isRunning = true
+        
+        // Register for screen off events to force re-lock
+        val filter = IntentFilter(Intent.ACTION_SCREEN_OFF)
+        registerReceiver(screenOffReceiver, filter)
+        
         Log.d(TAG, "AppLockAccessibilityService created")
     }
 
@@ -64,23 +92,64 @@ class AppLockAccessibilityService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
+        
+        // Refresh cache periodically or on transition to ensure accuracy
+        if (lockedAppsCache.isEmpty()) {
+            lockedAppsCache = lockPrefs.getLockedApps()
+        }
+
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
 
         val packageName = event.packageName?.toString() ?: return
+
+        // 1. Completely ignore internal Privix events and transient SystemUI/Android events.
+        if (packageName == "com.privix.privix" || 
+            packageName == "com.android.systemui" || 
+            packageName == "android") {
+            
+            // Sync cache when the user interacts with Privix (since they might have changed settings)
+            if (packageName == "com.privix.privix") {
+                lockedAppsCache = lockPrefs.getLockedApps()
+            }
+            return
+        }
+
+        val previousPackage = lastForegroundPackage
+        lastForegroundPackage = packageName
+
+        // 2. If the user is still navigating within the same app, do not lock again.
+        if (packageName == previousPackage) return
         
-        // Skip system packages
-        if (packageName in SYSTEM_PACKAGES) return
-        
-        // Skip if it's a launcher (covers various OEM launchers)
-        if (packageName.contains("launcher", ignoreCase = true)) return
+        // 3. Skip launchers (we updated the tracker above so we know the user left the app, 
+        // but we don't want to show a lock screen on the Home screen itself).
+        if (packageName.contains("launcher", ignoreCase = true) || 
+            packageName == "com.android.launcher" || 
+            packageName == "com.android.launcher3" || 
+            packageName == "com.google.android.apps.nexuslauncher") {
+            return
+        }
 
-        // Check if this app is in our locked list
-        if (!lockPrefs.isAppLocked(packageName)) return
+        // 4. Skip other system utility packages from being locked (but they do count as "leaving" an app)
+        if (packageName == "com.android.settings" || 
+            packageName == "com.android.packageinstaller") {
+            return
+        }
 
-        // Check if currently unlocked within relock timeout
-        if (lockPrefs.isAppCurrentlyUnlocked(packageName)) return
+        // 5. Quick-check memory cache (MUCH faster than SharedPreferences disk read)
+        if (!lockedAppsCache.contains(packageName)) {
+            // Safety: if not in cache, do a slow disk check just in case the list changed
+            if (!lockPrefs.isAppLocked(packageName)) return
+            
+            // Sync cache if we found a missing item
+            lockedAppsCache = lockPrefs.getLockedApps()
+        }
 
-        // Debounce: prevent rapid re-triggering for the same package
+        // 6. Check if currently unlocked within relock timeout or session grace period
+        if (UnlockManager.isAppSessionUnlocked(packageName) || lockPrefs.isAppCurrentlyUnlocked(packageName)) {
+            return
+        }
+
+        // 7. Debounce: prevent rapid re-triggering for the same package
         val now = System.currentTimeMillis()
         if (packageName == lastTriggeredPackage && (now - lastTriggerTime) < DEBOUNCE_MS) {
             return
@@ -91,16 +160,19 @@ class AppLockAccessibilityService : AccessibilityService() {
 
         Log.d(TAG, "Locked app detected: $packageName — showing overlay")
 
-        // Launch overlay lock screen
-        showLockOverlay(packageName)
+        // 8. Snap the curtain INSTANTLY before starting the Activity
+        CurtainManager.show(this)
+
+        // 9. Launch native auth screen
+        showAuthScreen(packageName)
     }
 
-    private fun showLockOverlay(packageName: String) {
-        val intent = Intent(this, OverlayService::class.java).apply {
-            putExtra(OverlayService.EXTRA_LOCKED_PACKAGE, packageName)
-            action = OverlayService.ACTION_SHOW_OVERLAY
+    private fun showAuthScreen(packageName: String) {
+        val intent = Intent(this, AuthActivity::class.java).apply {
+            putExtra("packageName", packageName)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
-        startService(intent)
+        startActivity(intent)
     }
 
     override fun onInterrupt() {
@@ -109,6 +181,11 @@ class AppLockAccessibilityService : AccessibilityService() {
 
     override fun onDestroy() {
         isRunning = false
+        try {
+            unregisterReceiver(screenOffReceiver)
+        } catch (e: Exception) {
+            // Already unregistered
+        }
         Log.d(TAG, "AppLockAccessibilityService destroyed")
         super.onDestroy()
     }

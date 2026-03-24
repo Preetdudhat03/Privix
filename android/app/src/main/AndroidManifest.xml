@@ -47,11 +47,13 @@
                 android:resource="@xml/accessibility_service_config"/>
         </service>
 
-        <!-- Overlay Service -->
-        <service
-            android:name=".services.OverlayService"
-            android:exported="false"
-            android:foregroundServiceType="specialUse"/>
+        <!-- System Auth Activity -->
+        <activity
+            android:name=".AuthActivity"
+            android:theme="@style/Theme.TransparentAuth"
+            android:launchMode="singleInstance"
+            android:excludeFromRecents="true"
+            android:exported="false" />
 
         <!-- Boot Receiver -->
         <receiver

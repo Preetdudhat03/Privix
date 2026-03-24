@@ -91,45 +91,33 @@ class LockPreferences(context: Context) {
 
     // --- Recently Unlocked Apps (with timestamps) ---
 
-    /**
-     * Mark an app as recently unlocked with the current timestamp.
-     * Format: "packageName:timestamp" stored as a Set.
-     */
     fun markAppUnlocked(packageName: String) {
-        val unlocked = getUnlockedAppsRaw().toMutableSet()
-        // Remove existing entry for this package
-        unlocked.removeAll { it.startsWith("$packageName:") }
-        // Add new entry with current timestamp
-        unlocked.add("$packageName:${System.currentTimeMillis()}")
-        prefs.edit().putStringSet(KEY_UNLOCKED_APPS, unlocked).apply()
+        prefs.edit().putLong("unlocked_$packageName", System.currentTimeMillis()).commit()
     }
 
-    /**
-     * Check if an app is currently unlocked (within the relock timeout window).
-     */
     fun isAppCurrentlyUnlocked(packageName: String): Boolean {
-        val timeout = getRelockTimeout()
-        if (timeout == RELOCK_IMMEDIATELY) return false
-        if (timeout == RELOCK_ALWAYS_UNLOCKED) {
-            // Check if it was unlocked at all in this session
-            return getUnlockedAppsRaw().any { it.startsWith("$packageName:") }
+        var timeout = getRelockTimeout()
+        if (timeout == RELOCK_IMMEDIATELY) {
+            // Give a 2.5 second grace period so the underlying app can regain focus 
+            // after the BioPrompt completes without instantly triggering another lock
+            timeout = 2500L
         }
 
-        val entry = getUnlockedAppsRaw().find { it.startsWith("$packageName:") }
-            ?: return false
+        val timestamp = prefs.getLong("unlocked_$packageName", 0L)
+        if (timestamp == 0L) return false
 
-        val timestamp = entry.substringAfter(":").toLongOrNull() ?: return false
+        if (timeout == RELOCK_ALWAYS_UNLOCKED) return true
+
         return (System.currentTimeMillis() - timestamp) < timeout
     }
 
-    /**
-     * Clear all unlocked states (e.g., on device boot).
-     */
     fun clearUnlockedApps() {
-        prefs.edit().putStringSet(KEY_UNLOCKED_APPS, emptySet()).apply()
-    }
-
-    private fun getUnlockedAppsRaw(): Set<String> {
-        return prefs.getStringSet(KEY_UNLOCKED_APPS, emptySet()) ?: emptySet()
+        val editor = prefs.edit()
+        for (key in prefs.all.keys) {
+            if (key.startsWith("unlocked_")) {
+                editor.remove(key)
+            }
+        }
+        editor.commit()
     }
 }
