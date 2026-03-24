@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FF121212"
+    android:clickable="true"
+    android:focusable="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:padding="32dp">
+
+        <!-- Lock Icon -->
+        <ImageView
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:layout_marginTop="80dp"
+            android:src="@android:drawable/ic_lock_lock"
+            android:tint="#BB86FC"
+            android:contentDescription="Locked" />
+
+        <!-- App Name -->
+        <TextView
+            android:id="@+id/tvLockedAppName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="App Locked"
+            android:textColor="#FFFFFF"
+            android:textSize="22sp"
+            android:fontFamily="sans-serif-medium" />
+
+        <!-- Subtitle -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Enter PIN to unlock"
+            android:textColor="#B0B0B0"
+            android:textSize="14sp" />
+
+        <!-- PIN Dots Container -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="40dp"
+            android:orientation="horizontal"
+            android:gravity="center">
+
+            <View android:id="@+id/pinDot1"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_margin="8dp"
+                android:background="@drawable/pin_dot_selector" />
+
+            <View android:id="@+id/pinDot2"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_margin="8dp"
+                android:background="@drawable/pin_dot_selector" />
+
+            <View android:id="@+id/pinDot3"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_margin="8dp"
+                android:background="@drawable/pin_dot_selector" />
+
+            <View android:id="@+id/pinDot4"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_margin="8dp"
+                android:background="@drawable/pin_dot_selector" />
+
+            <View android:id="@+id/pinDot5"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_margin="8dp"
+                android:background="@drawable/pin_dot_selector"
+                android:visibility="gone" />
+
+            <View android:id="@+id/pinDot6"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_margin="8dp"
+                android:background="@drawable/pin_dot_selector"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <!-- Error Text -->
+        <TextView
+            android:id="@+id/tvError"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Wrong PIN. Try again."
+            android:textColor="#CF6679"
+            android:textSize="13sp"
+            android:visibility="invisible" />
+
+        <!-- Number Pad -->
+        <LinearLayout
+            android:layout_width="280dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <!-- Row 1: 1 2 3 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center">
+
+                <TextView android:id="@+id/btn1"
+                    style="@style/PinButton"
+                    android:text="1" />
+                <TextView android:id="@+id/btn2"
+                    style="@style/PinButton"
+                    android:text="2" />
+                <TextView android:id="@+id/btn3"
+                    style="@style/PinButton"
+                    android:text="3" />
+            </LinearLayout>
+
+            <!-- Row 2: 4 5 6 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center">
+
+                <TextView android:id="@+id/btn4"
+                    style="@style/PinButton"
+                    android:text="4" />
+                <TextView android:id="@+id/btn5"
+                    style="@style/PinButton"
+                    android:text="5" />
+                <TextView android:id="@+id/btn6"
+                    style="@style/PinButton"
+                    android:text="6" />
+            </LinearLayout>
+
+            <!-- Row 3: 7 8 9 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center">
+
+                <TextView android:id="@+id/btn7"
+                    style="@style/PinButton"
+                    android:text="7" />
+                <TextView android:id="@+id/btn8"
+                    style="@style/PinButton"
+                    android:text="8" />
+                <TextView android:id="@+id/btn9"
+                    style="@style/PinButton"
+                    android:text="9" />
+            </LinearLayout>
+
+            <!-- Row 4: [biometric] 0 [backspace] -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center">
+
+                <!-- Placeholder for biometric (future) -->
+                <View
+                    android:layout_width="72dp"
+                    android:layout_height="72dp"
+                    android:layout_margin="6dp" />
+
+                <TextView android:id="@+id/btn0"
+                    style="@style/PinButton"
+                    android:text="0" />
+
+                <ImageButton android:id="@+id/btnBackspace"
+                    android:layout_width="72dp"
+                    android:layout_height="72dp"
+                    android:layout_margin="6dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:src="@android:drawable/ic_input_delete"
+                    android:tint="#FFFFFF"
+                    android:scaleType="center"
+                    android:contentDescription="Backspace" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

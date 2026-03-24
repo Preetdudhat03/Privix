@@ -49,11 +49,16 @@ class LockPreferences(context: Context) {
 
     // --- PIN ---
 
-    fun setPinHash(hash: String) {
+    fun setPinHash(hash: String, pinLength: Int) {
         prefs.edit()
             .putString(KEY_PIN_HASH, hash)
+            .putInt(KEY_PIN_LENGTH, pinLength)
             .putBoolean(KEY_PIN_SET, true)
             .apply()
+    }
+
+    fun getPinLength(): Int {
+        return prefs.getInt(KEY_PIN_LENGTH, 4)
     }
 
     fun getPinHash(): String? {
