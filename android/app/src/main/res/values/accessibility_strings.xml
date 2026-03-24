@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_service_description">Privix App Lock monitors which app is in the foreground to protect your locked apps with a PIN or biometric lock screen.</string>
+</resources>
