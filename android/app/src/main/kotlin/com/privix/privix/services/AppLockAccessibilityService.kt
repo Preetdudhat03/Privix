@@ -134,7 +134,11 @@ class AppLockAccessibilityService : AccessibilityService() {
             return
         }
 
-        // 3. SHOW CURTAIN IMMEDIATELY BEFORE ANY DISK READS
+        // 3. Skip transitions WITHIN the same app (internal navigation)
+        // This is critical to prevent re-locking or flickering when swapping fragments/pages.
+        if (packageName == previousPackage) return
+
+        // 4. SHOW CURTAIN IMMEDIATELY BEFORE ANY DISK READS
         // This is the "Zero-Latency" trigger.
         CurtainManager.show(this)
 
