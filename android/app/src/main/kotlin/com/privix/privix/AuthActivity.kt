@@ -32,6 +32,9 @@ class AuthActivity : AppCompatActivity() {
                     Log.d("AuthActivity", "Auth success for $packageName")
                     UnlockManager.markUnlocked(packageName)
                     LockPreferences(this@AuthActivity).markAppUnlocked(packageName)
+                    
+                    // Auth successful: hide the curtain so the user can see the app 
+                    CurtainManager.hide()
                     finish()
                 }
 
@@ -63,13 +66,10 @@ class AuthActivity : AppCompatActivity() {
                 exitToHome()
             }
         }
-
-        // Hide the curtain now that AuthActivity is ready with its own opaque background.
-        // This allows the BiometricPrompt (which is a system dialog) to be seen.
-        CurtainManager.hide()
     }
 
     private fun exitToHome() {
+        // Hide curtain BEFORE exiting so the home screen is visible
         CurtainManager.hide()
         val homeIntent = Intent(Intent.ACTION_MAIN).apply {
             addCategory(Intent.CATEGORY_HOME)
@@ -79,8 +79,14 @@ class AuthActivity : AppCompatActivity() {
         finishAffinity()
     }
     
+    override fun onResume() {
+        super.onResume()
+        // DO NOT hide curtain here yet, BiometricPrompt is a system dialog
+        // and might be showing OVER our activity.
+    }
+
     override fun onDestroy() {
-        CurtainManager.hide() // Safety net
+        // Curtain is hidden when finishing successfully or exiting to home
         super.onDestroy()
     }
     
