@@ -96,10 +96,9 @@ class AppLockAccessibilityService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
-        
         val packageName = event.packageName?.toString() ?: return
 
-        // 1. Extreme Fast Filter: Only process transitions and clicks
+        // 1. Extreme Fast Filter
         val eventType = event.eventType
         val isPotentiallyLaunch = eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
                                 eventType == AccessibilityEvent.TYPE_VIEW_FOCUSED ||
@@ -108,47 +107,30 @@ class AppLockAccessibilityService : AccessibilityService() {
 
         if (!isPotentiallyLaunch) return
 
-        // 2. Early Exit: Known safe packages
-        if (packageName == "com.privix.privix" || packageName == "com.android.systemui" || packageName == "android") {
-            if (packageName == "com.privix.privix") {
-                lockedAppsCache = lockPrefs.getLockedApps()
-            }
-            return
-        }
-
-        // 3. Cache Check
+        // 2. Cache Sync (Fast, bit-level or memory checks only from here on)
         if (lockedAppsCache.isEmpty()) {
             lockedAppsCache = lockPrefs.getLockedApps()
         }
 
         val previousPackage = lastForegroundPackage
-        
-        // 4. Launcher/Home check
-        if (packageName.contains("launcher", ignoreCase = true) || SYSTEM_PACKAGES.contains(packageName)) {
-            lastForegroundPackage = packageName
-            CurtainManager.hide()
-            return
-        }
 
-        // 5. Internal Nav Guard
-        if (packageName == previousPackage) {
-            return
-        }
-
-        // 6. DETECT LOCKED APP
+        // 3. TARGET LOCKED APP DETECTED? - SHOW CURTAIN IMMEDIATELY
+        // We do this BEFORE checking authorization to guarantee zero content exposure.
         if (lockedAppsCache.contains(packageName)) {
-            // Check if already authorized
+            // Internal navigation: skip re-locking logic but keep tracking
+            if (packageName == previousPackage) return
+            
+            // SNAPPING CURTAIN NOW (Before checking if it's already authorized)
+            CurtainManager.show(this)
+            lastForegroundPackage = packageName
+
+            // Now check if we can silently hide it (authorized apps)
             if (UnlockManager.isAppSessionUnlocked(packageName) || lockPrefs.isAppCurrentlyUnlocked(packageName)) {
-                lastForegroundPackage = packageName
                 CurtainManager.hide()
                 return
             }
 
-            // SNAP CURTAIN ON
-            CurtainManager.show(this)
-            lastForegroundPackage = packageName
-
-            // 7. Debounce and launch Auth
+            // Debounce the Auth UI launch
             val now = System.currentTimeMillis()
             if (packageName == lastTriggeredPackage && (now - lastTriggerTime) < DEBOUNCE_MS) {
                 return
@@ -156,11 +138,24 @@ class AppLockAccessibilityService : AccessibilityService() {
 
             lastTriggerTime = now
             lastTriggeredPackage = packageName
-
-            Log.d(TAG, "Curtain is UP. Launching Auth for $packageName")
+            Log.d(TAG, "Securing app: $packageName")
             showAuthScreen(packageName)
+            return
+        }
+
+        // 4. Safe packages / Non-lockable
+        lastForegroundPackage = packageName
+        
+        if (packageName == "com.privix.privix") {
+            lockedAppsCache = lockPrefs.getLockedApps()
+            return
+        }
+
+        // Hide curtain on home/launcher
+        if (packageName.contains("launcher", ignoreCase = true) || SYSTEM_PACKAGES.contains(packageName)) {
+            CurtainManager.hide()
         } else {
-            lastForegroundPackage = packageName
+            // For any other non-locked app, ensure curtain is hidden
             CurtainManager.hide()
         }
     }
