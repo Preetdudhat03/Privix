@@ -96,16 +96,20 @@ class AppLockAccessibilityService : AccessibilityService() {
         if (event == null) return
         
         val eventType = event.eventType
-        val packageName = event.packageName?.toString() ?: return
+        
+        // Rapid filter: we only care about window and window state changes
+        if (eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && 
+            eventType != AccessibilityEvent.TYPE_WINDOWS_CHANGED) return
+
+        // Get the package name as fast as possible. 
+        // If the event doesn't have it (common on TYPE_WINDOWS_CHANGED), 
+        // we inspect the window hierarchy directly.
+        val packageName = event.packageName?.toString() ?: getTopPackageName() ?: return
 
         // Sync locked apps cache promptly
         if (lockedAppsCache.isEmpty() || packageName == "com.privix.privix") {
             lockedAppsCache = lockPrefs.getLockedApps()
         }
-
-        // We care about window changes (instant) and window state (rendering)
-        if (eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && 
-            eventType != AccessibilityEvent.TYPE_WINDOWS_CHANGED) return
 
         // 1. Handle System/Transient windows (Notifications, Dialogs, etc.)
         if (packageName == "com.android.systemui" || packageName == "android") {
@@ -125,11 +129,11 @@ class AppLockAccessibilityService : AccessibilityService() {
             return
         }
 
-        // Reset system window flag as we are now in a "real" app
+        // Reset system window flag
         returningFromSystemWindow = false
         lastForegroundPackage = packageName
 
-        // 3. Same-app navigation skip (dialogs, activities within same app)
+        // 3. Same-app navigation skip
         if (packageName == previousPackage) return
         
         // 4. Launcher skip
@@ -140,19 +144,18 @@ class AppLockAccessibilityService : AccessibilityService() {
             return
         }
 
-        // 5. System utility skip (but counts as leaving app)
+        // 5. System utility skip
         if (packageName == "com.android.settings" || packageName == "com.android.packageinstaller") {
             return
         }
 
-        // 6. Fast Lock-Check
+        // 6. Fast Lock-Check (Critical Path)
         if (!lockedAppsCache.contains(packageName)) {
-            // Check disk for absolute certainty if not in memory cache
             if (!lockPrefs.isAppLocked(packageName)) return
             lockedAppsCache = lockPrefs.getLockedApps()
         }
 
-        // 7. Check Unlock States (Session Grace Period vs Relock Setting)
+        // 7. Check Unlock States
         if (UnlockManager.isAppSessionUnlocked(packageName) || lockPrefs.isAppCurrentlyUnlocked(packageName)) {
             return
         }
@@ -168,9 +171,30 @@ class AppLockAccessibilityService : AccessibilityService() {
 
         Log.d(TAG, "Triggering Lock for: $packageName")
 
-        // 9. ACTION: Show Curtain immediately, then AuthActivity
+        // 9. ACTION: Show Curtain immediately
         CurtainManager.show(this)
         showAuthScreen(packageName)
+    }
+
+    /**
+     * Inspects the window hierarchy to find the topmost application package.
+     * This is much faster and more reliable than waiting for a WindowState event.
+     */
+    private fun getTopPackageName(): String? {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            val windowList = windows
+            if (!windowList.isNullOrEmpty()) {
+                // Iterate backwards to find the top-most application window
+                for (i in windowList.size - 1 downTo 0) {
+                    val window = windowList[i]
+                    if (window.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_APPLICATION) {
+                        return window.root?.packageName?.toString()
+                    }
+                }
+            }
+        }
+        // Fallback to the active window root
+        return rootInActiveWindow?.packageName?.toString()
     }
 
     private fun showAuthScreen(packageName: String) {

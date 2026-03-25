@@ -18,6 +18,7 @@ object CurtainManager {
 
     /**
      * Pre-initializes the curtain view to ensure zero-latency when needed.
+     * The window is added ONCE and kept persistent.
      */
     fun init(context: Context) {
         if (curtainView != null) return
@@ -26,6 +27,7 @@ object CurtainManager {
             windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
             curtainView = View(context).apply {
                 setBackgroundColor(0xFF0D0D1A.toInt()) // Privix dark background
+                visibility = View.GONE
             }
 
             layoutParams = WindowManager.LayoutParams(
@@ -42,7 +44,8 @@ object CurtainManager {
                 gravity = Gravity.CENTER
             }
             
-            Log.d("CurtainManager", "Curtain initialized and pre-warmed")
+            windowManager?.addView(curtainView, layoutParams)
+            Log.d("CurtainManager", "Curtain persistent window added (hidden)")
         } catch (e: Exception) {
             Log.e("CurtainManager", "Error initializing curtain", e)
         }
@@ -53,11 +56,9 @@ object CurtainManager {
             init(context)
         }
         
-        if (curtainView?.parent != null) return
-
         try {
-            windowManager?.addView(curtainView, layoutParams)
-            Log.d("CurtainManager", "Curtain shown")
+            curtainView?.visibility = View.VISIBLE
+            Log.d("CurtainManager", "Curtain toggled: VISIBLE")
         } catch (e: Exception) {
             Log.e("CurtainManager", "Error showing curtain", e)
         }
@@ -65,10 +66,8 @@ object CurtainManager {
 
     fun hide() {
         try {
-            if (curtainView != null && curtainView?.parent != null) {
-                windowManager?.removeView(curtainView)
-                Log.d("CurtainManager", "Curtain hidden")
-            }
+            curtainView?.visibility = View.GONE
+            Log.d("CurtainManager", "Curtain toggled: GONE")
         } catch (e: Exception) {
             Log.e("CurtainManager", "Error hiding curtain", e)
         }
