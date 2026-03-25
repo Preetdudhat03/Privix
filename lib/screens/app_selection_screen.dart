@@ -203,7 +203,6 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
                         return AppTile(
                           appName: app.appName,
                           packageName: app.packageName,
-                          icon: app.icon,
                           isLocked: app.isLocked,
                           onToggle: (value) => _onToggle(app, value),
                         );

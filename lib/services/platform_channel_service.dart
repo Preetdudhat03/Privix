@@ -13,13 +13,20 @@ class PlatformChannelService {
 
   // ─── App Discovery ───────────────────────────────────
 
-  /// Get all user-installed apps from the device.
+  /// Get all user-installed apps from the device (without icons).
   static Future<List<AppInfo>> getInstalledApps() async {
     final List<dynamic> rawApps = await _channel.invokeMethod('getInstalledApps');
     return rawApps.map((app) {
       final map = Map<String, dynamic>.from(app as Map);
       return AppInfo.fromMap(map);
     }).toList();
+  }
+
+  /// Get the icon for a specific app as Base64.
+  static Future<Uint8List?> getAppIcon(String packageName) async {
+    final String? iconBase64 = await _channel.invokeMethod('getAppIcon', {'packageName': packageName});
+    if (iconBase64 == null) return null;
+    return base64Decode(iconBase64);
   }
 
   // ─── Locked Apps ─────────────────────────────────────

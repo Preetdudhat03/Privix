@@ -1,6 +1,7 @@
 package com.privix.privix.services
 
 import android.content.Context
+import android.graphics.Color
 import android.graphics.PixelFormat
 import android.view.Gravity
 import android.view.View
@@ -14,44 +15,57 @@ import android.util.Log
 object CurtainManager {
     private var curtainView: View? = null
     private var windowManager: WindowManager? = null
+    private var layoutParams: WindowManager.LayoutParams? = null
+    private var isVisible = false
 
-    fun show(context: Context) {
-        if (curtainView != null) return
-
-        try {
+    private fun initIfNeeded(context: Context) {
+        if (curtainView == null) {
             windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
             curtainView = View(context).apply {
                 setBackgroundColor(0xFF0D0D1A.toInt()) // Privix dark background
             }
-
-            val params = WindowManager.LayoutParams(
+            layoutParams = WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                         WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                         WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
-                PixelFormat.TRANSLUCENT
+                PixelFormat.OPAQUE
             ).apply {
                 gravity = Gravity.CENTER
+                // Remove all animations for instant appearance
+                windowAnimations = 0
             }
+        }
+    }
 
-            windowManager?.addView(curtainView, params)
+    fun show(context: Context) {
+        if (isVisible) return
+        
+        try {
+            initIfNeeded(context)
+            windowManager?.addView(curtainView, layoutParams)
+            isVisible = true
+            Log.d("CurtainManager", "Curtain shown instantly")
         } catch (e: Exception) {
-            Log.e("CurtainManager", "Error showing curtain", e)
+            // Log but don't crash; if already added, we catch it here
+            isVisible = true 
         }
     }
 
     fun hide() {
+        if (!isVisible) return
+        
         try {
             if (curtainView != null) {
-                windowManager?.removeView(curtainView)
-                curtainView = null
-                Log.d("CurtainManager", "Curtain hidden")
+                windowManager?.removeViewImmediate(curtainView)
+                isVisible = false
+                Log.d("CurtainManager", "Curtain hidden immediately")
             }
         } catch (e: Exception) {
             Log.e("CurtainManager", "Error hiding curtain", e)
-            curtainView = null
+            isVisible = false
         }
     }
 }

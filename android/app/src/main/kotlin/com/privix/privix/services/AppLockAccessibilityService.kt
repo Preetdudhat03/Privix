@@ -117,53 +117,49 @@ class AppLockAccessibilityService : AccessibilityService() {
         val previousPackage = lastForegroundPackage
         lastForegroundPackage = packageName
 
-        // 2. If the user is still navigating within the same app, do not lock again.
+        // 1. If currently navigating within the same app, do nothing.
         if (packageName == previousPackage) return
-        
-        // 3. Skip launchers (we updated the tracker above so we know the user left the app, 
-        // but we don't want to show a lock screen on the Home screen itself).
-        if (packageName.contains("launcher", ignoreCase = true) || 
-            packageName == "com.android.launcher" || 
-            packageName == "com.android.launcher3" || 
-            packageName == "com.google.android.apps.nexuslauncher") {
-            return
-        }
 
-        // 4. Skip other system utility packages from being locked (but they do count as "leaving" an app)
-        if (packageName == "com.android.settings" || 
-            packageName == "com.android.packageinstaller") {
-            return
-        }
+        // 2. Identify if this is a launcher or a system package that NEVER triggers a lock
+        val isNonLockable = packageName.contains("launcher", ignoreCase = true) || 
+                           SYSTEM_PACKAGES.contains(packageName)
 
-        // 5. Quick-check memory cache (MUCH faster than SharedPreferences disk read)
+        if (isNonLockable) return
+
+        // 3. SHOW CURTAIN IMMEDIATELY BEFORE ANY DISK READS
+        // This eliminates the "flash" of the app because we overlay the screen 
+        // while we determine if it actually needs a PIN.
+        CurtainManager.show(this)
+
+        // 4. Quick-check memory cache 
         if (!lockedAppsCache.contains(packageName)) {
-            // Safety: if not in cache, do a slow disk check just in case the list changed
-            if (!lockPrefs.isAppLocked(packageName)) return
-            
-            // Sync cache if we found a missing item
+            // Safety: if not in cache, do a slow disk check
+            if (!lockPrefs.isAppLocked(packageName)) {
+                CurtainManager.hide() // Mistake, app wasn't locked
+                return
+            }
             lockedAppsCache = lockPrefs.getLockedApps()
         }
 
-        // 6. Check if currently unlocked within relock timeout or session grace period
+        // 5. Check if currently unlocked within relock timeout
         if (UnlockManager.isAppSessionUnlocked(packageName) || lockPrefs.isAppCurrentlyUnlocked(packageName)) {
+            CurtainManager.hide() // App is authorized
             return
         }
 
-        // 7. Debounce: prevent rapid re-triggering for the same package
+        // 6. Debounce: prevent rapid re-triggering
         val now = System.currentTimeMillis()
         if (packageName == lastTriggeredPackage && (now - lastTriggerTime) < DEBOUNCE_MS) {
+            // Wait for existing auth to complete or relock delay to pass
             return
         }
 
         lastTriggeredPackage = packageName
         lastTriggerTime = now
 
-        Log.d(TAG, "Locked app detected: $packageName — showing overlay")
+        Log.d(TAG, "Locked app confirmed: $packageName")
 
-        // 8. Snap the curtain INSTANTLY before starting the Activity
-        CurtainManager.show(this)
-
-        // 9. Launch native auth screen
+        // 7. Launch native auth screen
         showAuthScreen(packageName)
     }
 
