@@ -15,7 +15,20 @@ class AuthActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        val packageName = intent.getStringExtra("packageName") ?: return finish()
+        // Ensure the screen stays on during authentication
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        
+        handleIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        val packageName = intent?.getStringExtra("packageName") ?: return finish()
         Log.d("AuthActivity", "Prompting system auth for $packageName")
 
         val executor = ContextCompat.getMainExecutor(this)
@@ -32,16 +45,12 @@ class AuthActivity : AppCompatActivity() {
                     Log.d("AuthActivity", "Auth success for $packageName")
                     UnlockManager.markUnlocked(packageName)
                     LockPreferences(this@AuthActivity).markAppUnlocked(packageName)
-                    
-                    // Auth successful: hide the curtain so the user can see the app 
-                    CurtainManager.hide()
                     finish()
                 }
 
                 override fun onAuthenticationFailed() {
                     super.onAuthenticationFailed()
                     Log.d("AuthActivity", "Auth failed")
-                    // BiometricPrompt handles retries natively
                 }
             })
 
@@ -58,18 +67,24 @@ class AuthActivity : AppCompatActivity() {
 
         val promptInfo = promptInfoBuilder.build()
 
-        if (savedInstanceState == null) {
-            try {
-                biometricPrompt.authenticate(promptInfo)
-            } catch (e: Exception) {
-                Log.e("AuthActivity", "Failed to show BiometricPrompt", e)
-                exitToHome()
-            }
+        try {
+            biometricPrompt.authenticate(promptInfo)
+        } catch (e: Exception) {
+            Log.e("AuthActivity", "Failed to show BiometricPrompt", e)
+            exitToHome()
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Hide the curtain only when AuthActivity is in the foreground and ready.
+        // We use post to ensure the window is actually rendered before removing the overlay.
+        window.decorView.postDelayed({
+            CurtainManager.hide()
+        }, 50)
+    }
+
     private fun exitToHome() {
-        // Hide curtain BEFORE exiting so the home screen is visible
         CurtainManager.hide()
         val homeIntent = Intent(Intent.ACTION_MAIN).apply {
             addCategory(Intent.CATEGORY_HOME)
@@ -79,14 +94,8 @@ class AuthActivity : AppCompatActivity() {
         finishAffinity()
     }
     
-    override fun onResume() {
-        super.onResume()
-        // DO NOT hide curtain here yet, BiometricPrompt is a system dialog
-        // and might be showing OVER our activity.
-    }
-
     override fun onDestroy() {
-        // Curtain is hidden when finishing successfully or exiting to home
+        CurtainManager.hide() // Safety net
         super.onDestroy()
     }
     

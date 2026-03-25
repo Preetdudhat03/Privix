@@ -56,20 +56,6 @@ class MainActivity : FlutterFragmentActivity() {
                     }
                 }
 
-                "getAppIcon" -> {
-                    val packageName = call.argument<String>("packageName")
-                    if (packageName != null) {
-                        try {
-                            val icon = getAppIconBase64(packageName)
-                            result.success(icon)
-                        } catch (e: Exception) {
-                            result.error("ICON_ERROR", e.message, null)
-                        }
-                    } else {
-                        result.error("INVALID_ARGS", "packageName is required", null)
-                    }
-                }
-
                 // ─── Locked Apps Management ──────────────────────────
                 "saveLockedApps" -> {
                     val apps = call.argument<List<String>>("apps")
@@ -210,11 +196,13 @@ class MainActivity : FlutterFragmentActivity() {
 
             try {
                 val appName = pm.getApplicationLabel(appInfo).toString()
-                
+                val icon = pm.getApplicationIcon(appInfo)
+                val iconBase64 = drawableToBase64(icon)
+
                 apps.add(mapOf(
                     "packageName" to appInfo.packageName,
-                    "appName" to appName
-                    // Icon removed here, fetched lazily via getAppIcon
+                    "appName" to appName,
+                    "icon" to iconBase64
                 ))
             } catch (e: Exception) {
                 // Skip apps we can't read
@@ -223,20 +211,6 @@ class MainActivity : FlutterFragmentActivity() {
 
         // Sort alphabetically
         return apps.sortedBy { (it["appName"] as? String)?.lowercase() }
-    }
-
-    /**
-     * Get a single app icon as base64.
-     */
-    private fun getAppIconBase64(packageName: String): String? {
-        val pm = packageManager
-        return try {
-            val appInfo = pm.getApplicationInfo(packageName, 0)
-            val icon = pm.getApplicationIcon(appInfo)
-            drawableToBase64(icon)
-        } catch (e: Exception) {
-            null
-        }
     }
 
     /**
