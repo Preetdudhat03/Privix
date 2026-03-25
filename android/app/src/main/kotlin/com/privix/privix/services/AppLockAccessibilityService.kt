@@ -98,65 +98,74 @@ class AppLockAccessibilityService : AccessibilityService() {
         if (event == null) return
         val packageName = event.packageName?.toString() ?: return
 
-        // 1. Extreme Fast Filter
+        // 1. Broad Trigger Filter
         val eventType = event.eventType
-        val isPotentiallyLaunch = eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
-                                eventType == AccessibilityEvent.TYPE_VIEW_FOCUSED ||
-                                eventType == AccessibilityEvent.TYPE_VIEW_CLICKED ||
-                                (eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED && (event.contentChangeTypes and AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_APPEARED != 0))
+        val isTransition = eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
+                           eventType == AccessibilityEvent.TYPE_VIEW_FOCUSED ||
+                           eventType == AccessibilityEvent.TYPE_VIEW_CLICKED ||
+                           eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED ||
+                           (eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED && 
+                            (event.contentChangeTypes and AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_APPEARED != 0))
 
-        if (!isPotentiallyLaunch) return
+        if (!isTransition) return
 
-        // 2. Cache Sync (Fast, bit-level or memory checks only from here on)
+        // 2. Cache Sync
         if (lockedAppsCache.isEmpty()) {
             lockedAppsCache = lockPrefs.getLockedApps()
         }
 
         val previousPackage = lastForegroundPackage
 
-        // 3. TARGET LOCKED APP DETECTED? - SHOW CURTAIN IMMEDIATELY
-        // We do this BEFORE checking authorization to guarantee zero content exposure.
+        // 3. INTERNAL NAVIGATION GUARD & SYSTEM EVENT FILTER
+        // We only skip if it's the same package AND it's NOT a major window change.
+        // This allows catching "Re-entry" from Home/Recents which usually triggers a state change.
+        if (packageName == previousPackage && eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            return
+        }
+        
+        // Skip updating tracker for system events (this prevents re-locking on page change)
+        val isSystem = packageName == "android" || packageName == "com.android.systemui" || packageName.contains("launcher", ignoreCase = true) || SYSTEM_PACKAGES.contains(packageName)
+        
+        // 4. LOCKED APP DETECTED?
         if (lockedAppsCache.contains(packageName)) {
-            // Internal navigation: skip re-locking logic but keep tracking
-            if (packageName == previousPackage) return
-            
-            // SNAPPING CURTAIN NOW (Before checking if it's already authorized)
+            // Check session unlock state from memory
+            if (UnlockManager.isAppSessionUnlocked(packageName) || lockPrefs.isAppCurrentlyUnlocked(packageName)) {
+                CurtainManager.cancelHide()
+                CurtainManager.hide()
+                lastForegroundPackage = packageName
+                return
+            }
+
+            // SNAPPING CURTAIN
             CurtainManager.show(this)
             lastForegroundPackage = packageName
 
-            // Now check if we can silently hide it (authorized apps)
-            if (UnlockManager.isAppSessionUnlocked(packageName) || lockPrefs.isAppCurrentlyUnlocked(packageName)) {
-                CurtainManager.hide()
-                return
-            }
-
-            // Debounce the Auth UI launch
+            // Launch Auth
             val now = System.currentTimeMillis()
-            if (packageName == lastTriggeredPackage && (now - lastTriggerTime) < DEBOUNCE_MS) {
-                return
-            }
-
+            if (packageName == lastTriggeredPackage && (now - lastTriggerTime) < DEBOUNCE_MS) return
+            
             lastTriggerTime = now
             lastTriggeredPackage = packageName
             Log.d(TAG, "Securing app: $packageName")
             showAuthScreen(packageName)
-            return
-        }
-
-        // 4. Safe packages / Non-lockable
-        lastForegroundPackage = packageName
-        
-        if (packageName == "com.privix.privix") {
-            lockedAppsCache = lockPrefs.getLockedApps()
-            return
-        }
-
-        // Hide curtain on home/launcher
-        if (packageName.contains("launcher", ignoreCase = true) || SYSTEM_PACKAGES.contains(packageName)) {
-            CurtainManager.hide()
         } else {
-            // For any other non-locked app, ensure curtain is hidden
-            CurtainManager.hide()
+            // Not a locked app
+            if (isSystem) {
+                // If we went to home/launcher, hide with delay to bridge re-entry
+                if (packageName.contains("launcher", ignoreCase = true) || packageName == "com.android.systemui") {
+                   if (previousPackage != null && lockedAppsCache.contains(previousPackage)) {
+                       CurtainManager.hideWithDelay(500) // Longer delay for Samsung
+                   } else {
+                       CurtainManager.hide()
+                   }
+                   // We DON'T update lastForegroundPackage to 'system' yet, 
+                   // so a quick re-entry still sees the previous package.
+                }
+            } else {
+                // It's a real, different, non-locked app. Hide immediately.
+                lastForegroundPackage = packageName
+                CurtainManager.hide()
+            }
         }
     }
 

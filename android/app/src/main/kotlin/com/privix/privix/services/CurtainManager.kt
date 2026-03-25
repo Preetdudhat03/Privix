@@ -27,11 +27,13 @@ object CurtainManager {
             windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
             curtainView = View(context).apply {
                 setBackgroundColor(0xFF0D0D1A.toInt()) // Privix dark background
+                visibility = View.INVISIBLE
             }
             
-            // Start with a 1x1 window that is NOT touchable (effectively hidden)
+            // Persistent FULL SCREEN window, initially INVISIBLE and NOT TOUCHABLE
             layoutParams = WindowManager.LayoutParams(
-                1, 1,
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                         WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
@@ -39,16 +41,14 @@ object CurtainManager {
                         WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
                 PixelFormat.TRANSLUCENT
             ).apply {
-                gravity = Gravity.TOP or Gravity.LEFT
-                x = 0
-                y = 0
+                gravity = Gravity.CENTER
                 windowAnimations = 0
             }
 
             windowManager?.addView(curtainView, layoutParams)
             isAdded = true
             isShown = false
-            Log.d("CurtainManager", "Curtain pre-allocated as 1x1 OPAQUE")
+            Log.d("CurtainManager", "Curtain pre-allocated as MATCH_PARENT INVISIBLE")
         } catch (e: Exception) {
             Log.e("CurtainManager", "Init failed", e)
         }
@@ -56,17 +56,17 @@ object CurtainManager {
 
     fun show(context: Context) {
         init(context)
+        cancelHide()
         if (isShown) return
 
         try {
             curtainView?.let { view ->
                 layoutParams?.let { params ->
-                    params.width = WindowManager.LayoutParams.MATCH_PARENT
-                    params.height = WindowManager.LayoutParams.MATCH_PARENT
+                    view.visibility = View.VISIBLE
                     params.flags = params.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
                     windowManager?.updateViewLayout(view, params)
                     isShown = true
-                    Log.d("CurtainManager", "Curtain expanded to MATCH_PARENT")
+                    Log.d("CurtainManager", "Curtain set to VISIBLE")
                 }
             }
         } catch (e: Exception) {
@@ -74,18 +74,20 @@ object CurtainManager {
         }
     }
 
+    private val hideRunnable = Runnable { hide() }
+
     fun hide() {
+        cancelHide() // Ensure no pending delay triggers after manual hide
         if (!isShown) return
         
         try {
             curtainView?.let { view ->
                 layoutParams?.let { params ->
-                    params.width = 1
-                    params.height = 1
+                    view.visibility = View.INVISIBLE
                     params.flags = params.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
                     windowManager?.updateViewLayout(view, params)
                     isShown = false
-                    Log.d("CurtainManager", "Curtain collapsed to 1x1")
+                    Log.d("CurtainManager", "Curtain set to INVISIBLE")
                 }
             }
         } catch (e: Exception) {
@@ -93,7 +95,17 @@ object CurtainManager {
         }
     }
 
+    fun hideWithDelay(delayMs: Long) {
+        curtainView?.removeCallbacks(hideRunnable)
+        curtainView?.postDelayed(hideRunnable, delayMs)
+    }
+
+    fun cancelHide() {
+        curtainView?.removeCallbacks(hideRunnable)
+    }
+
     fun cleanup() {
+        cancelHide()
         try {
             if (isAdded) {
                 windowManager?.removeViewImmediate(curtainView)
