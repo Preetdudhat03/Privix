@@ -77,37 +77,45 @@ class AppLockAccessibilityService : AccessibilityService() {
         lockPrefs = LockPreferences(this)
         isRunning = true
         
+        // Pre-initialize and pre-add the curtain view for zero latency
+        CurtainManager.init(this)
+        
         // Register for screen off events to force re-lock
         val filter = IntentFilter(Intent.ACTION_SCREEN_OFF)
         registerReceiver(screenOffReceiver, filter)
         
-        Log.d(TAG, "AppLockAccessibilityService created")
+        Log.d(TAG, "AppLockAccessibilityService created and Curtain initialized")
     }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         isRunning = true
+        CurtainManager.init(this)
         Log.d(TAG, "AppLockAccessibilityService connected")
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
         
-        // Refresh cache periodically or on transition to ensure accuracy
+        // Refresh cache periodically
         if (lockedAppsCache.isEmpty()) {
             lockedAppsCache = lockPrefs.getLockedApps()
         }
 
-        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
-
         val packageName = event.packageName?.toString() ?: return
+
+        // Filter events that indicate a potential app/window switch
+        val isWindowSwitch = event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
+                           event.eventType == AccessibilityEvent.TYPE_VIEW_FOCUSED ||
+                           (event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED && event.contentChangeTypes == AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_APPEARED)
+
+        if (!isWindowSwitch) return
 
         // 1. Completely ignore internal Privix events and transient SystemUI/Android events.
         if (packageName == "com.privix.privix" || 
             packageName == "com.android.systemui" || 
             packageName == "android") {
             
-            // Sync cache when the user interacts with Privix (since they might have changed settings)
             if (packageName == "com.privix.privix") {
                 lockedAppsCache = lockPrefs.getLockedApps()
             }
@@ -117,25 +125,24 @@ class AppLockAccessibilityService : AccessibilityService() {
         val previousPackage = lastForegroundPackage
         lastForegroundPackage = packageName
 
-        // 1. If currently navigating within the same app, do nothing.
-        if (packageName == previousPackage) return
-
         // 2. Identify if this is a launcher or a system package that NEVER triggers a lock
         val isNonLockable = packageName.contains("launcher", ignoreCase = true) || 
                            SYSTEM_PACKAGES.contains(packageName)
 
-        if (isNonLockable) return
+        if (isNonLockable) {
+            CurtainManager.hide() // Ensure it's hidden on home/settings
+            return
+        }
 
         // 3. SHOW CURTAIN IMMEDIATELY BEFORE ANY DISK READS
-        // This eliminates the "flash" of the app because we overlay the screen 
-        // while we determine if it actually needs a PIN.
+        // This is the "Zero-Latency" trigger.
         CurtainManager.show(this)
 
         // 4. Quick-check memory cache 
         if (!lockedAppsCache.contains(packageName)) {
             // Safety: if not in cache, do a slow disk check
             if (!lockPrefs.isAppLocked(packageName)) {
-                CurtainManager.hide() // Mistake, app wasn't locked
+                CurtainManager.hide() 
                 return
             }
             lockedAppsCache = lockPrefs.getLockedApps()
@@ -143,19 +150,19 @@ class AppLockAccessibilityService : AccessibilityService() {
 
         // 5. Check if currently unlocked within relock timeout
         if (UnlockManager.isAppSessionUnlocked(packageName) || lockPrefs.isAppCurrentlyUnlocked(packageName)) {
-            CurtainManager.hide() // App is authorized
+            CurtainManager.hide() 
             return
         }
 
-        // 6. Debounce: prevent rapid re-triggering
-        val now = System.currentTimeMillis()
-        if (packageName == lastTriggeredPackage && (now - lastTriggerTime) < DEBOUNCE_MS) {
-            // Wait for existing auth to complete or relock delay to pass
+        // 6. Debounce: prevent rapid re-triggering for THE SAME UI state
+        // Note: we removed the (packageName == previousPackage) check at step 1 
+        // to catch cases where the app restarts or a sub-window appears.
+        if (packageName == previousPackage && (System.currentTimeMillis() - lastTriggerTime) < DEBOUNCE_MS) {
             return
         }
 
+        lastTriggerTime = System.currentTimeMillis()
         lastTriggeredPackage = packageName
-        lastTriggerTime = now
 
         Log.d(TAG, "Locked app confirmed: $packageName")
 
