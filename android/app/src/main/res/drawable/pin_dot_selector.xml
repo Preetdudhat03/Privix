@@ -3,7 +3,7 @@
     <!-- Filled dot when activated (digit entered) -->
     <item android:state_activated="true">
         <shape android:shape="oval">
-            <solid android:color="#BB86FC"/>
+            <solid android:color="#007AFF"/>
             <size android:width="16dp" android:height="16dp"/>
         </shape>
     </item>
