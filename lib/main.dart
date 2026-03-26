@@ -41,7 +41,7 @@ class PrivixApp extends StatelessWidget {
           error: Color(0xFFFF453A), // One UI Error Red
         ),
         fontFamily: 'Inter',
-        cardTheme: CardTheme(
+        cardTheme: CardThemeData(
           color: const Color(0xFF1C1C1E),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(32),
