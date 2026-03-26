@@ -47,9 +47,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _showRelockPicker() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: const Color(0xFF1C1C1E),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
       builder: (context) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -81,12 +81,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: Text(
                   option['label'] as String,
                   style: TextStyle(
-                    color: isSelected ? const Color(0xFF6C63FF) : Colors.white,
+                    color: isSelected ? const Color(0xFF007AFF) : Colors.white,
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                   ),
                 ),
                 trailing: isSelected
-                  ? const Icon(Icons.check_circle, color: Color(0xFF6C63FF), size: 20)
+                  ? const Icon(Icons.check_circle_rounded, color: Color(0xFF007AFF), size: 24)
                   : null,
                 onTap: () {
                   _setRelockTimeout(value);
@@ -103,98 +103,146 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D1A),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF0D0D1A),
-        elevation: 0,
-        title: const Text(
-          'Settings',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-        ),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
+      backgroundColor: Colors.black,
       body: _isLoading
-        ? const Center(child: CircularProgressIndicator(color: Color(0xFF6C63FF)))
-        : ListView(
+        ? const Center(child: CircularProgressIndicator(color: Color(0xFF007AFF)))
+        : CustomScrollView(
             physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.all(16),
-            children: [
-              // Security note
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF6C63FF).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF6C63FF).withOpacity(0.3)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.lock_person, color: Color(0xFF6C63FF)),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        "Privix uses your device's secure lock screen (Fingerprint, Face, PIN).",
-                        style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 13),
-                      ),
+            slivers: [
+              // One UI Large Header
+              SliverAppBar(
+                backgroundColor: Colors.black,
+                expandedHeight: 180,
+                collapsedHeight: 80,
+                pinned: true,
+                flexibleSpace: FlexibleSpaceBar(
+                  titlePadding: const EdgeInsets.only(left: 24, bottom: 16),
+                  centerTitle: false,
+                  title: const Text(
+                    'Settings',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 26,
+                      fontWeight: FontWeight.w700,
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Behavior section
-              _buildSectionHeader('Behavior'),
-              const SizedBox(height: 12),
-              _buildSettingTile(
-                icon: Icons.timer,
-                title: 'Relock Timer',
-                subtitle: _getRelockLabel(),
-                onTap: _showRelockPicker,
-              ),
-              const SizedBox(height: 24),
-
-              // Permissions section
-              _buildSectionHeader('Permissions'),
-              const SizedBox(height: 12),
-              _buildSettingTile(
-                icon: Icons.accessibility_new,
-                title: 'Accessibility Service',
-                subtitle: 'Open system accessibility settings',
-                onTap: () => PlatformChannelService.openAccessibilitySettings(),
-              ),
-              const SizedBox(height: 8),
-              _buildSettingTile(
-                icon: Icons.layers,
-                title: 'Draw Over Apps',
-                subtitle: 'Optional background permission',
-                onTap: () => PlatformChannelService.openOverlaySettings(),
-              ),
-              const SizedBox(height: 8),
-              _buildSettingTile(
-                icon: Icons.battery_saver,
-                title: 'Battery Optimization',
-                subtitle: 'Prevent service from being killed',
-                onTap: () => PlatformChannelService.openBatteryOptimizationSettings(),
-              ),
-              const SizedBox(height: 32),
-
-              // About
-              Center(
-                child: Text(
-                  'Privix App Lock v1.0.0',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.3),
-                    fontSize: 12,
                   ),
+                  background: Container(color: Colors.black),
+                ),
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+                  onPressed: () => Navigator.pop(context),
                 ),
               ),
-              const SizedBox(height: 8),
-              Center(
-                child: Text(
-                  'Powered by Android System Authentication',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.2),
-                    fontSize: 11,
+
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+                  child: Column(
+                    children: [
+                      // Security Focus Block
+                      Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1C1C1E),
+                          borderRadius: BorderRadius.circular(32),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: const Color(0xFF007AFF).withOpacity(0.12),
+                              ),
+                              child: const Icon(Icons.lock_person_rounded, color: Color(0xFF007AFF), size: 24),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Secure Auth',
+                                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    "Privix uses your device's Fingerprint, Face, or PIN.",
+                                    style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+
+                      // Behavior section
+                      _buildSectionHeader('Behavior'),
+                      const SizedBox(height: 12),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1C1C1E),
+                          borderRadius: BorderRadius.circular(32),
+                        ),
+                        child: _buildSettingTile(
+                          icon: Icons.timer_rounded,
+                          title: 'Relock Timer',
+                          subtitle: _getRelockLabel(),
+                          showDivider: false,
+                          onTap: _showRelockPicker,
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+
+                      // Permissions section
+                      _buildSectionHeader('Permissions'),
+                      const SizedBox(height: 12),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1C1C1E),
+                          borderRadius: BorderRadius.circular(32),
+                        ),
+                        child: Column(
+                          children: [
+                            _buildSettingTile(
+                              icon: Icons.accessibility_new_rounded,
+                              title: 'Accessibility Service',
+                              subtitle: 'Required for app detection',
+                              showDivider: true,
+                              onTap: () => PlatformChannelService.openAccessibilitySettings(),
+                            ),
+                            _buildSettingTile(
+                              icon: Icons.layers_rounded,
+                              title: 'Draw Over Apps',
+                              subtitle: 'Required for lock overlay',
+                              showDivider: true,
+                              onTap: () => PlatformChannelService.openOverlaySettings(),
+                            ),
+                            _buildSettingTile(
+                              icon: Icons.battery_saver_rounded,
+                              title: 'Battery Optimization',
+                              subtitle: 'Prevent background death',
+                              showDivider: false,
+                              onTap: () => PlatformChannelService.openBatteryOptimizationSettings(),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 48),
+
+                      // About
+                      Text(
+                        'Privix App Lock v1.0.0',
+                        style: TextStyle(color: Colors.white.withOpacity(0.25), fontSize: 13),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Optimized for One UI 7',
+                        style: TextStyle(color: const Color(0xFF007AFF).withOpacity(0.4), fontSize: 11, fontWeight: FontWeight.w600),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -213,13 +261,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildSectionHeader(String title) {
-    return Text(
-      title.toUpperCase(),
-      style: TextStyle(
-        color: Colors.white.withOpacity(0.5),
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-        letterSpacing: 1.5,
+    return Padding(
+      padding: const EdgeInsets.only(left: 12, bottom: 8),
+      child: Text(
+        title,
+        style: TextStyle(
+          color: Colors.white.withOpacity(0.5),
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -228,45 +278,54 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required IconData icon,
     required String title,
     required String subtitle,
+    required bool showDivider,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1A1A2E),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFF333344)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFF6C63FF).withOpacity(0.12),
-              ),
-              child: Icon(icon, color: const Color(0xFF6C63FF), size: 20),
+    return Column(
+      children: [
+        InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(32),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF007AFF).withOpacity(0.12),
+                  ),
+                  child: Icon(icon, color: const Color(0xFF007AFF), size: 22),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title,
+                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500)),
+                      const SizedBox(height: 2),
+                      Text(subtitle,
+                        style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12)),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white24, size: 14),
+              ],
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title,
-                    style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
-                  const SizedBox(height: 2),
-                  Text(subtitle,
-                    style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11)),
-                ],
-              ),
-            ),
-            const Icon(Icons.arrow_forward_ios, color: Colors.white30, size: 16),
-          ],
+          ),
         ),
-      ),
+        if (showDivider)
+          Padding(
+            padding: const EdgeInsets.only(left: 80, right: 20),
+            child: Divider(
+              height: 1,
+              color: Colors.white.withOpacity(0.05),
+            ),
+          ),
+      ],
     );
   }
 }
