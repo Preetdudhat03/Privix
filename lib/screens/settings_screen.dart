@@ -251,6 +251,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         'Optimized for One UI 7',
                         style: TextStyle(color: const Color(0xFF007AFF).withOpacity(0.4), fontSize: 11, fontWeight: FontWeight.w600),
                       ),
+                      Text(
+                        'Developed by Preet Dudhat',
+                        style: TextStyle(
+                          color: theme.colorScheme.primary.withOpacity(0.5),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ],
                   ),
                 ),

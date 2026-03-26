@@ -16,19 +16,10 @@ class AppInfo {
   });
 
   factory AppInfo.fromMap(Map<String, dynamic> map, {bool isLocked = false}) {
-    Uint8List? iconBytes;
-    if (map['icon'] != null) {
-      try {
-        iconBytes = base64Decode(map['icon'] as String);
-      } catch (_) {
-        iconBytes = null;
-      }
-    }
-
     return AppInfo(
       packageName: map['packageName'] as String,
       appName: map['appName'] as String,
-      icon: iconBytes,
+      icon: map['icon'] as Uint8List?,
       isLocked: isLocked,
     );
   }

@@ -46,13 +46,26 @@ class MainActivity : FlutterFragmentActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
 
-                // ─── App Discovery ───────────────────────────────────
                 "getInstalledApps" -> {
                     try {
                         val apps = getInstalledUserApps()
                         result.success(apps)
                     } catch (e: Exception) {
                         result.error("GET_APPS_ERROR", e.message, null)
+                    }
+                }
+
+                "getAppIcon" -> {
+                    val packageName = call.argument<String>("packageName")
+                    if (packageName != null) {
+                        try {
+                            val icon = getAppIcon(packageName)
+                            result.success(icon)
+                        } catch (e: Exception) {
+                            result.error("ICON_ERROR", e.message, null)
+                        }
+                    } else {
+                        result.error("INVALID_ARGS", "packageName is required", null)
                     }
                 }
 
@@ -171,60 +184,84 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     /**
-     * Get all user-installed (non-system) apps with name, package, and base64-encoded icon.
+     * Get all user-installed (non-system) apps that have a launcher icon.
+     * Using queryIntentActivities is much faster than getInstalledApplications.
      */
     private fun getInstalledUserApps(): List<Map<String, Any?>> {
         val pm = packageManager
         val apps = mutableListOf<Map<String, Any?>>()
 
-        val packages = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            pm.getInstalledApplications(PackageManager.ApplicationInfoFlags.of(0))
+        val mainIntent = Intent(Intent.ACTION_MAIN, null)
+        mainIntent.addCategory(Intent.CATEGORY_LAUNCHER)
+
+        val resolveInfos = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            pm.queryIntentActivities(mainIntent, PackageManager.ResolveInfoFlags.of(0))
         } else {
             @Suppress("DEPRECATION")
-            pm.getInstalledApplications(0)
+            pm.queryIntentActivities(mainIntent, 0)
         }
 
-        for (appInfo in packages) {
-            // Skip system apps (unless they were updated by user, e.g. Chrome)
-            if (appInfo.flags and ApplicationInfo.FLAG_SYSTEM != 0 &&
-                appInfo.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP == 0) {
-                continue
-            }
-
+        var count = 0
+        for (info in resolveInfos) {
+            val appInfo = info.activityInfo.applicationInfo
+            
             // Skip our own app
             if (appInfo.packageName == packageName) continue
 
             try {
-                val appName = pm.getApplicationLabel(appInfo).toString()
-                val icon = pm.getApplicationIcon(appInfo)
-                val iconBase64 = drawableToBase64(icon)
-
-                apps.add(mapOf(
+                val appName = info.loadLabel(pm).toString()
+                val appMap = mutableMapOf(
                     "packageName" to appInfo.packageName,
-                    "appName" to appName,
-                    "icon" to iconBase64
-                ))
+                    "appName" to appName
+                )
+
+                // Eagerly fetch icons for the first 20 apps to show them instantly
+                if (count < 20) {
+                    val icon = info.loadIcon(pm)
+                    appMap["icon"] = drawableToByteArray(icon)
+                    count++
+                }
+
+                apps.add(appMap)
             } catch (e: Exception) {
                 // Skip apps we can't read
             }
         }
 
-        // Sort alphabetically
-        return apps.sortedBy { (it["appName"] as? String)?.lowercase() }
+        // Sort alphabetically by name
+        return apps.distinctBy { it["packageName"] } // Avoid duplicates if an app has multiple launchers
+                  .sortedBy { (it["appName"] as? String)?.lowercase() }
     }
 
     /**
-     * Convert a Drawable to a base64-encoded PNG string for transfer over platform channel.
+     * Fetch a specific app icon, resize it for performance, and return as ByteArray.
      */
-    private fun drawableToBase64(drawable: Drawable): String {
+    private fun getAppIcon(targetPackage: String): ByteArray? {
+        val pm = packageManager
+        return try {
+            val appInfo = pm.getApplicationInfo(targetPackage, 0)
+            val icon = pm.getApplicationIcon(appInfo)
+            drawableToByteArray(icon)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Resize icon to 120x120 and convert to ByteArray.
+     */
+    private fun drawableToByteArray(drawable: Drawable): ByteArray {
+        val targetSize = 120
         val bitmap = when (drawable) {
-            is BitmapDrawable -> drawable.bitmap
+            is BitmapDrawable -> {
+                if (drawable.bitmap.width <= targetSize && drawable.bitmap.height <= targetSize) {
+                    drawable.bitmap
+                } else {
+                    Bitmap.createScaledBitmap(drawable.bitmap, targetSize, targetSize, true)
+                }
+            }
             else -> {
-                val bmp = Bitmap.createBitmap(
-                    drawable.intrinsicWidth.coerceAtLeast(1),
-                    drawable.intrinsicHeight.coerceAtLeast(1),
-                    Bitmap.Config.ARGB_8888
-                )
+                val bmp = Bitmap.createBitmap(targetSize, targetSize, Bitmap.Config.ARGB_8888)
                 val canvas = Canvas(bmp)
                 drawable.setBounds(0, 0, canvas.width, canvas.height)
                 drawable.draw(canvas)
@@ -234,8 +271,9 @@ class MainActivity : FlutterFragmentActivity() {
 
         val stream = ByteArrayOutputStream()
         bitmap.compress(Bitmap.CompressFormat.PNG, 80, stream)
-        return Base64.encodeToString(stream.toByteArray(), Base64.NO_WRAP)
+        return stream.toByteArray()
     }
+
 
     /**
      * Check if our AccessibilityService is currently enabled.

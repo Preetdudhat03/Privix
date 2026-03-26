@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/app_info.dart';
 import '../services/platform_channel_service.dart';
 import '../services/storage_service.dart';
+import '../services/app_service.dart';
 import '../widgets/app_tile.dart';
 
 /// Screen to select which apps to lock.
@@ -35,13 +36,18 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
 
   Future<void> _loadApps() async {
     try {
-      final apps = await PlatformChannelService.getInstalledApps();
-      final lockedApps = await StorageService.getLockedApps();
-      final lockedSet = lockedApps.toSet();
-
-      for (final app in apps) {
-        app.isLocked = lockedSet.contains(app.packageName);
+      final appService = AppService();
+      
+      // If not initialized, wait for it (unlikely as it starts on HomeScreen)
+      if (!appService.isInitialized) {
+        await appService.initialize();
+      } else {
+        // Just sync lock status in case it changed
+        await appService.syncLockStatus();
       }
+
+      final apps = List<AppInfo>.from(appService.apps);
+      final lockedSet = apps.where((a) => a.isLocked).map((a) => a.packageName).toSet();
 
       // Sort: locked apps first, then alphabetically
       apps.sort((a, b) {
@@ -50,19 +56,16 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
         return a.appName.toLowerCase().compareTo(b.appName.toLowerCase());
       });
 
-      setState(() {
-        _apps = apps;
-        _filteredApps = apps;
-        _lockedPackages = lockedSet;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load apps: $e')),
-        );
+        setState(() {
+          _apps = apps;
+          _filteredApps = apps;
+          _lockedPackages = lockedSet;
+          _isLoading = false;
+        });
       }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -103,6 +106,7 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
           )
         : CustomScrollView(
             physics: const BouncingScrollPhysics(),
+            cacheExtent: 1500, // Pre-render ~20 items ahead for smoother scrolling
             slivers: [
               // One UI Large Header
               SliverAppBar(
@@ -210,14 +214,16 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
                       (context, index) {
                         final app = _filteredApps[index];
                         return AppTile(
+                          key: ValueKey(app.packageName),
                           appName: app.appName,
                           packageName: app.packageName,
-                          icon: app.icon,
                           isLocked: app.isLocked,
                           onToggle: (value) => _onToggle(app, value),
                         );
                       },
                       childCount: _filteredApps.length,
+                      addAutomaticKeepAlives: false,
+                      addRepaintBoundaries: true,
                     ),
                   ),
               const SliverToBoxAdapter(child: SizedBox(height: 32)),

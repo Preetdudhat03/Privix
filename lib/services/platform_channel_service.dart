@@ -22,6 +22,19 @@ class PlatformChannelService {
     }).toList();
   }
 
+  /// Get the icon bytes for a specific app package.
+  static Future<Uint8List?> getAppIcon(String packageName) async {
+    try {
+      final dynamic result = await _channel.invokeMethod('getAppIcon', {'packageName': packageName});
+      if (result != null) {
+        return result as Uint8List;
+      }
+    } catch (_) {
+      // Return null on icon loading failure
+    }
+    return null;
+  }
+
   // ─── Locked Apps ─────────────────────────────────────
 
   /// Save the list of locked app package names to native SharedPreferences.
