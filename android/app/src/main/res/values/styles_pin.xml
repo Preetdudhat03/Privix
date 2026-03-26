@@ -2,15 +2,15 @@
 <resources>
     <!-- PIN keypad button style -->
     <style name="PinButton">
-        <item name="android:layout_width">72dp</item>
-        <item name="android:layout_height">72dp</item>
-        <item name="android:layout_margin">6dp</item>
+        <item name="android:layout_width">80dp</item>
+        <item name="android:layout_height">80dp</item>
+        <item name="android:layout_margin">10dp</item>
         <item name="android:gravity">center</item>
-        <item name="android:textSize">28sp</item>
+        <item name="android:textSize">32sp</item>
         <item name="android:textColor">#FFFFFF</item>
         <item name="android:background">@drawable/pin_button_bg</item>
         <item name="android:clickable">true</item>
         <item name="android:focusable">true</item>
-        <item name="android:fontFamily">sans-serif-light</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
     </style>
 </resources>
