@@ -224,6 +224,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildStatusCard() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(32),
@@ -283,6 +285,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildSectionTitle(String title) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.only(left: 12, bottom: 8),
       child: Text(
@@ -304,6 +307,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     required bool showDivider,
     required VoidCallback onTap,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Column(
       children: [
         InkWell(
@@ -335,7 +339,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: colorScheme.onSurface,
                           fontSize: 15,
                           fontWeight: FontWeight.w500,
@@ -345,7 +349,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       Text(
                         subtitle,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.4),
+                          color: colorScheme.onSurface.withOpacity(0.4),
                           fontSize: 12,
                         ),
                       ),
@@ -366,7 +370,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             padding: const EdgeInsets.only(left: 80, right: 20),
             child: Divider(
               height: 1,
-              color: Colors.white.withOpacity(0.05),
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.05),
             ),
           ),
       ],
@@ -381,6 +385,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     required bool showDivider,
     required VoidCallback onTap,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Column(
       children: [
         InkWell(
@@ -406,7 +411,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: colorScheme.onSurface,
                           fontSize: 15,
                           fontWeight: FontWeight.w500,
@@ -416,14 +421,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       Text(
                         subtitle,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.4),
+                          color: colorScheme.onSurface.withOpacity(0.4),
                           fontSize: 12,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const Icon(Icons.arrow_forward_ios_rounded, color: colorScheme.onSurface.withOpacity(0.24), size: 14),
+                Icon(Icons.arrow_forward_ios_rounded, color: colorScheme.onSurface.withOpacity(0.24), size: 14),
               ],
             ),
           ),
@@ -433,7 +438,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             padding: const EdgeInsets.only(left: 80, right: 20),
             child: Divider(
               height: 1,
-              color: Colors.white.withOpacity(0.05),
+              color: colorScheme.onSurface.withOpacity(0.05),
             ),
           ),
       ],
