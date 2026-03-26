@@ -11,7 +11,7 @@ object UnlockManager {
     private val unlockedApps = mutableMapOf<String, Long>()
     
     // Minimum time an app stays unlocked regardless of settings (to prevent bounce-back loops)
-    private const val SESSION_GRACE_PERIOD_MS = 3000L
+    private const val SESSION_GRACE_PERIOD_MS = 15000L
 
     @Synchronized
     fun markUnlocked(packageName: String) {

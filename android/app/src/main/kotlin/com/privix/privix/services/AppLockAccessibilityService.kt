@@ -102,9 +102,12 @@ class AppLockAccessibilityService : AccessibilityService() {
             eventType != AccessibilityEvent.TYPE_WINDOWS_CHANGED) return
 
         // Get the package name as fast as possible. 
-        // If the event doesn't have it (common on TYPE_WINDOWS_CHANGED), 
-        // we inspect the window hierarchy directly.
-        val packageName = event.packageName?.toString() ?: getTopPackageName() ?: return
+        // We prioritize getTopPackageName() to avoid background events from clobbering our tracking.
+        val eventPackage = event.packageName?.toString()
+        val topPackage = getTopPackageName()
+        
+        // Final resolved package name for this interaction
+        val packageName = topPackage ?: eventPackage ?: return
 
         // Sync locked apps cache promptly
         if (lockedAppsCache.isEmpty() || packageName == "com.privix.privix") {
@@ -112,7 +115,10 @@ class AppLockAccessibilityService : AccessibilityService() {
         }
 
         // 1. Handle System/Transient windows (Notifications, Dialogs, etc.)
-        if (packageName == "com.android.systemui" || packageName == "android") {
+        // We MUST check the event package (trigger) and the top package.
+        // If either is a system component, treat it as a system interaction.
+        if (eventPackage == "com.android.systemui" || eventPackage == "android" ||
+            topPackage == "com.android.systemui" || topPackage == "android") {
             returningFromSystemWindow = true
             return
         }
@@ -131,10 +137,14 @@ class AppLockAccessibilityService : AccessibilityService() {
 
         // Reset system window flag
         returningFromSystemWindow = false
-        lastForegroundPackage = packageName
 
         // 3. Same-app navigation skip
         if (packageName == previousPackage) return
+        
+        // ONLY update the foreground package AFTER passing the same-app check.
+        // This prevents transient window state events (like those from background launchers)
+        // from clobbering our tracking of the user's active session.
+        lastForegroundPackage = packageName
         
         // 4. Launcher skip
         if (packageName.contains("launcher", ignoreCase = true) || 
