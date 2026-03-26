@@ -70,116 +70,146 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D1A),
+      backgroundColor: Colors.black,
       body: _isLoading
-        ? const Center(child: CircularProgressIndicator(color: Color(0xFF6C63FF)))
+        ? const Center(child: CircularProgressIndicator(color: Color(0xFF007AFF)))
         : RefreshIndicator(
             onRefresh: _loadStatus,
-            color: const Color(0xFF6C63FF),
+            color: const Color(0xFF007AFF),
             child: CustomScrollView(
               physics: const AlwaysScrollableScrollPhysics(
                 parent: BouncingScrollPhysics(),
               ),
               slivers: [
-                // App bar
+                // App bar with One UI Large Title
                 SliverAppBar(
-                  backgroundColor: const Color(0xFF0D0D1A),
-                  expandedHeight: 80,
-                  floating: true,
+                  backgroundColor: Colors.black,
+                  expandedHeight: 200,
+                  collapsedHeight: 80,
+                  floating: false,
                   pinned: true,
-                  title: Row(
-                    children: [
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [
-                              const Color(0xFF6C63FF),
-                              const Color(0xFF6C63FF).withOpacity(0.6),
-                            ],
+                  flexibleSpace: FlexibleSpaceBar(
+                    titlePadding: const EdgeInsets.only(left: 24, bottom: 16),
+                    centerTitle: false,
+                    title: Text(
+                      'Privix',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                    background: Container(
+                      color: Colors.black,
+                      child: Stack(
+                        children: [
+                          Positioned(
+                            right: -20,
+                            top: 40,
+                            child: Icon(
+                              Icons.shield,
+                              size: 180,
+                              color: const Color(0xFF007AFF).withOpacity(0.05),
+                            ),
                           ),
-                        ),
-                        child: const Icon(Icons.shield, color: Colors.white, size: 20),
+                        ],
                       ),
-                      const SizedBox(width: 12),
-                      const Text(
-                        'Privix',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                   actions: [
-                    IconButton(
-                      icon: const Icon(Icons.settings_outlined, color: Colors.white70),
-                      onPressed: () => Navigator.pushNamed(context, '/settings')
-                        .then((_) => _loadStatus()),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: IconButton(
+                        icon: const Icon(Icons.settings_outlined, color: Colors.white70),
+                        onPressed: () => Navigator.pushNamed(context, '/settings')
+                          .then((_) => _loadStatus()),
+                      ),
                     ),
                   ],
                 ),
 
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Status card
+                        // Status Focus block
                         _buildStatusCard(),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 24),
 
-                        // Permission cards
+                        // Section Headers and Cards
                         _buildSectionTitle('Permissions'),
                         const SizedBox(height: 12),
-                        _buildPermissionCard(
-                          icon: Icons.accessibility_new,
-                          title: 'Accessibility Service',
-                          subtitle: 'Required to detect foreground apps',
-                          isEnabled: _accessibilityEnabled,
-                          onTap: () => PlatformChannelService.openAccessibilitySettings(),
-                        ),
-                        const SizedBox(height: 8),
-                        _buildPermissionCard(
-                          icon: Icons.layers,
-                          title: 'Draw Over Apps',
-                          subtitle: 'Required to show lock screen overlay',
-                          isEnabled: _overlayEnabled,
-                          onTap: () => PlatformChannelService.openOverlaySettings(),
-                        ),
-                        const SizedBox(height: 8),
-                        _buildPermissionCard(
-                          icon: Icons.battery_saver,
-                          title: 'Battery Optimization',
-                          subtitle: 'Prevents system from killing the service',
-                          isEnabled: _batteryOptimized,
-                          onTap: () => PlatformChannelService.openBatteryOptimizationSettings(),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1C1C1E),
+                            borderRadius: BorderRadius.circular(32),
+                          ),
+                          child: Column(
+                            children: [
+                              _buildPermissionCard(
+                                icon: Icons.accessibility_new,
+                                title: 'Accessibility Service',
+                                subtitle: 'Detect foreground apps',
+                                isEnabled: _accessibilityEnabled,
+                                showDivider: true,
+                                onTap: () => PlatformChannelService.openAccessibilitySettings(),
+                              ),
+                              _buildPermissionCard(
+                                icon: Icons.layers,
+                                title: 'Draw Over Apps',
+                                subtitle: 'Show lock screen overlay',
+                                isEnabled: _overlayEnabled,
+                                showDivider: true,
+                                onTap: () => PlatformChannelService.openOverlaySettings(),
+                              ),
+                              _buildPermissionCard(
+                                icon: Icons.battery_saver,
+                                title: 'Battery Optimization',
+                                subtitle: 'Keep service alive',
+                                isEnabled: _batteryOptimized,
+                                showDivider: false,
+                                onTap: () => PlatformChannelService.openBatteryOptimizationSettings(),
+                              ),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 24),
 
-                        // Quick actions
                         _buildSectionTitle('Quick Actions'),
                         const SizedBox(height: 12),
-                        _buildActionCard(
-                          icon: Icons.apps_rounded,
-                          title: 'Manage Locked Apps',
-                          subtitle: '$_lockedAppCount apps locked',
-                          color: const Color(0xFF6C63FF),
-                          onTap: () => Navigator.pushNamed(context, '/app_selection')
-                            .then((_) => _loadStatus()),
-                        ),
-                        const SizedBox(height: 8),
-                        _buildActionCard(
-                          icon: Icons.pin,
-                          title: 'Change PIN',
-                          subtitle: 'Update your lock screen PIN',
-                          color: const Color(0xFF00C896),
-                          onTap: () => Navigator.pushNamed(context, '/settings'),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1C1C1E),
+                            borderRadius: BorderRadius.circular(32),
+                          ),
+                          child: Column(
+                            children: [
+                              _buildActionCard(
+                                icon: Icons.apps_rounded,
+                                title: 'Manage Locked Apps',
+                                subtitle: '$_lockedAppCount apps locked',
+                                color: const Color(0xFF007AFF),
+                                showDivider: true,
+                                onTap: () => Navigator.pushNamed(context, '/app_selection')
+                                  .then((_) => _loadStatus()),
+                              ),
+                              _buildActionCard(
+                                icon: Icons.pin,
+                                title: 'Settings',
+                                subtitle: 'Behavior & PIN settings',
+                                color: Colors.grey[400]!,
+                                showDivider: false,
+                                onTap: () => Navigator.pushNamed(context, '/settings'),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -194,51 +224,48 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget _buildStatusCard() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: LinearGradient(
-          colors: _isProtectionActive
-            ? [const Color(0xFF1A2A1A), const Color(0xFF0D1A0D)]
-            : [const Color(0xFF2A1A1A), const Color(0xFF1A0D0D)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        border: Border.all(
-          color: _isProtectionActive
-            ? const Color(0xFF00C896).withOpacity(0.3)
-            : const Color(0xFFCF6679).withOpacity(0.3),
-          width: 1,
-        ),
+        color: const Color(0xFF1C1C1E),
+        borderRadius: BorderRadius.circular(32),
       ),
       child: Column(
         children: [
-          Icon(
-            _isProtectionActive ? Icons.shield : Icons.shield_outlined,
-            color: _isProtectionActive
-              ? const Color(0xFF00C896)
-              : const Color(0xFFCF6679),
-            size: 48,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            _isProtectionActive ? 'Protection Active' : 'Protection Inactive',
-            style: TextStyle(
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
               color: _isProtectionActive
-                ? const Color(0xFF00C896)
-                : const Color(0xFFCF6679),
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
+                ? const Color(0xFF007AFF).withOpacity(0.1)
+                : const Color(0xFFFF453A).withOpacity(0.1),
+            ),
+            child: Icon(
+              _isProtectionActive ? Icons.shield_rounded : Icons.shield_outlined,
+              color: _isProtectionActive
+                ? const Color(0xFF007AFF)
+                : const Color(0xFFFF453A),
+              size: 56,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 20),
+          Text(
+            _isProtectionActive ? 'Protection Active' : 'Not Fully Protected',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'Inter',
+            ),
+          ),
+          const SizedBox(height: 8),
           Text(
             _isProtectionActive
-              ? '$_lockedAppCount app${_lockedAppCount == 1 ? '' : 's'} protected'
+              ? '$_lockedAppCount app${_lockedAppCount == 1 ? '' : 's'} are currently secured'
               : _getInactiveReason(),
+            textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.white.withOpacity(0.5),
-              fontSize: 13,
+              fontSize: 14,
             ),
           ),
         ],
@@ -254,15 +281,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildSectionTitle(String title) {
-    return Align(
-      alignment: Alignment.centerLeft,
+    return Padding(
+      padding: const EdgeInsets.only(left: 12, bottom: 8),
       child: Text(
         title,
         style: TextStyle(
-          color: Colors.white.withOpacity(0.6),
+          color: Colors.white.withOpacity(0.7),
           fontSize: 13,
           fontWeight: FontWeight.w600,
-          letterSpacing: 1.2,
         ),
       ),
     );
@@ -273,70 +299,75 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     required String title,
     required String subtitle,
     required bool isEnabled,
+    required bool showDivider,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: isEnabled ? null : onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1A1A2E),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isEnabled
-              ? const Color(0xFF00C896).withOpacity(0.3)
-              : const Color(0xFF333344),
+    return Column(
+      children: [
+        InkWell(
+          onTap: isEnabled ? null : onTap,
+          borderRadius: BorderRadius.circular(32),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isEnabled
+                      ? const Color(0xFF007AFF).withOpacity(0.12)
+                      : Colors.white.withOpacity(0.05),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: isEnabled ? const Color(0xFF007AFF) : Colors.white38,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.4),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  isEnabled ? Icons.check_circle_rounded : Icons.arrow_forward_ios_rounded,
+                  color: isEnabled ? const Color(0xFF007AFF) : Colors.white24,
+                  size: isEnabled ? 24 : 14,
+                ),
+              ],
+            ),
           ),
         ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isEnabled
-                  ? const Color(0xFF00C896).withOpacity(0.15)
-                  : const Color(0xFF333344),
-              ),
-              child: Icon(
-                icon,
-                color: isEnabled ? const Color(0xFF00C896) : Colors.white54,
-                size: 20,
-              ),
+        if (showDivider)
+          Padding(
+            padding: const EdgeInsets.only(left: 80, right: 20),
+            child: Divider(
+              height: 1,
+              color: Colors.white.withOpacity(0.05),
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.4),
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              isEnabled ? Icons.check_circle : Icons.arrow_forward_ios,
-              color: isEnabled ? const Color(0xFF00C896) : Colors.white30,
-              size: isEnabled ? 22 : 16,
-            ),
-          ],
-        ),
-      ),
+          ),
+      ],
     );
   }
 
@@ -345,56 +376,65 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     required String title,
     required String subtitle,
     required Color color,
+    required bool showDivider,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1A1A2E),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFF333344)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: color.withOpacity(0.15),
-              ),
-              child: Icon(icon, color: color, size: 20),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
+    return Column(
+      children: [
+        InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(32),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: color.withOpacity(0.12),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.4),
-                      fontSize: 11,
-                    ),
+                  child: Icon(icon, color: color, size: 22),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.4),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white24, size: 14),
+              ],
             ),
-            const Icon(Icons.arrow_forward_ios, color: Colors.white30, size: 16),
-          ],
+          ),
         ),
-      ),
+        if (showDivider)
+          Padding(
+            padding: const EdgeInsets.only(left: 80, right: 20),
+            child: Divider(
+              height: 1,
+              color: Colors.white.withOpacity(0.05),
+            ),
+          ),
+      ],
     );
   }
 }

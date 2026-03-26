@@ -14,7 +14,7 @@ void main() {
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.light,
-    systemNavigationBarColor: Color(0xFF0D0D1A),
+    systemNavigationBarColor: Colors.black,
     systemNavigationBarIconBrightness: Brightness.light,
   ));
   runApp(const PrivixApp());
@@ -31,14 +31,23 @@ class PrivixApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0D0D1A),
+        scaffoldBackgroundColor: Colors.black,
         colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF6C63FF),
-          secondary: Color(0xFF00C896),
-          surface: Color(0xFF1A1A2E),
-          error: Color(0xFFCF6679),
+          primary: Color(0xFF007AFF), // Samsung Blue
+          onPrimary: Colors.white,
+          secondary: Color(0xFF007AFF),
+          surface: Color(0xFF1C1C1E), // One UI Surface Gray
+          onSurface: Colors.white,
+          error: Color(0xFFFF453A), // One UI Error Red
         ),
-        fontFamily: 'Roboto',
+        fontFamily: 'Inter',
+        cardTheme: CardTheme(
+          color: const Color(0xFF1C1C1E),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(32),
+          ),
+          elevation: 0,
+        ),
       ),
       home: const HomeScreen(),
       routes: {
