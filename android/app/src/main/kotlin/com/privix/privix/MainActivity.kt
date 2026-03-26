@@ -184,53 +184,43 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     /**
-     * Get all user-installed (non-system) apps that have a launcher icon.
-     * Using queryIntentActivities is much faster than getInstalledApplications.
+     * Get all user-installed (non-system) apps with name and package only.
+     * Icons are fetched lazily via getAppIcon to improve loading speed.
      */
     private fun getInstalledUserApps(): List<Map<String, Any?>> {
         val pm = packageManager
         val apps = mutableListOf<Map<String, Any?>>()
 
-        val mainIntent = Intent(Intent.ACTION_MAIN, null)
-        mainIntent.addCategory(Intent.CATEGORY_LAUNCHER)
-
-        val resolveInfos = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            pm.queryIntentActivities(mainIntent, PackageManager.ResolveInfoFlags.of(0))
+        val packages = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            pm.getInstalledApplications(PackageManager.ApplicationInfoFlags.of(0))
         } else {
             @Suppress("DEPRECATION")
-            pm.queryIntentActivities(mainIntent, 0)
+            pm.getInstalledApplications(0)
         }
 
-        var count = 0
-        for (info in resolveInfos) {
-            val appInfo = info.activityInfo.applicationInfo
-            
+        for (appInfo in packages) {
+            // Skip system apps
+            if (appInfo.flags and ApplicationInfo.FLAG_SYSTEM != 0 &&
+                appInfo.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP == 0) {
+                continue
+            }
+
             // Skip our own app
             if (appInfo.packageName == packageName) continue
 
             try {
-                val appName = info.loadLabel(pm).toString()
-                val appMap = mutableMapOf(
+                val appName = pm.getApplicationLabel(appInfo).toString()
+                apps.add(mapOf(
                     "packageName" to appInfo.packageName,
                     "appName" to appName
-                )
-
-                // Eagerly fetch icons for the first 20 apps to show them instantly
-                if (count < 20) {
-                    val icon = info.loadIcon(pm)
-                    appMap["icon"] = drawableToByteArray(icon)
-                    count++
-                }
-
-                apps.add(appMap)
+                ))
             } catch (e: Exception) {
                 // Skip apps we can't read
             }
         }
 
-        // Sort alphabetically by name
-        return apps.distinctBy { it["packageName"] } // Avoid duplicates if an app has multiple launchers
-                  .sortedBy { (it["appName"] as? String)?.lowercase() }
+        // Sort alphabetically
+        return apps.sortedBy { (it["appName"] as? String)?.lowercase() }
     }
 
     /**

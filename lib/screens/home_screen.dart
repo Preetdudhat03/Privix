@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/platform_channel_service.dart';
 import '../services/storage_service.dart';
-import '../services/app_service.dart';
 
 /// Main dashboard after PIN setup.
 /// Shows lock status, permission states, locked app count, and quick actions.
@@ -43,12 +42,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> _loadStatus() async {
     try {
-      // Trigger app pre-fetching in parallel with status loading
-      final appService = AppService();
-      if (!appService.isInitialized) {
-        appService.initialize();
-      }
-
       final results = await Future.wait([
         PlatformChannelService.checkAccessibilityPermission(),
         PlatformChannelService.checkOverlayPermission(),

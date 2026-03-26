@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'platform_channel_service.dart';
+import '../models/app_info.dart';
 
 /// Centralized storage service for all app data.
 /// 
@@ -12,6 +14,7 @@ class StorageService {
   static const _keyPin = 'user_pin';
   static const _keyPinSet = 'pin_set';
   static const _keyBiometricEnabled = 'biometric_enabled';
+  static const _keyAppCache = 'cached_app_list';
 
   // ─── PIN ─────────────────────────────────────────────
 
@@ -77,5 +80,34 @@ class StorageService {
   static Future<int> getRelockTimeout() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getInt('relock_timeout') ?? 0; // Default: immediately
+  }
+
+  // ─── App List Caching ────────────────────────────────
+
+  /// Get cached app list from local storage.
+  static Future<List<AppInfo>> getCachedApps() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonStr = prefs.getString(_keyAppCache);
+    if (jsonStr == null) return [];
+
+    try {
+      final List<dynamic> decoded = jsonDecode(jsonStr);
+      return decoded.map((item) => AppInfo.fromMap(Map<String, dynamic>.from(item))).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Save app list to local storage to speed up next launch.
+  static Future<void> saveCachedApps(List<AppInfo> apps) async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonStr = jsonEncode(apps.map((a) => a.toMap()).toList());
+    await prefs.setString(_keyAppCache, jsonStr);
+  }
+
+  /// Clear the app cache (used for refresh).
+  static Future<void> clearAppCache() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keyAppCache);
   }
 }

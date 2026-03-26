@@ -19,8 +19,15 @@ class AppInfo {
     return AppInfo(
       packageName: map['packageName'] as String,
       appName: map['appName'] as String,
-      icon: map['icon'] as Uint8List?,
-      isLocked: isLocked,
+      isLocked: isLocked || (map['isLocked'] ?? false),
     );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'packageName': packageName,
+      'appName': appName,
+      'isLocked': isLocked,
+    };
   }
 }

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../models/app_info.dart';
 import '../services/platform_channel_service.dart';
 import '../services/storage_service.dart';
-import '../services/app_service.dart';
 import '../widgets/app_tile.dart';
 
 /// Screen to select which apps to lock.
@@ -34,39 +33,65 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
     super.dispose();
   }
 
-  Future<void> _loadApps() async {
+  Future<void> _loadApps({bool forceRefresh = false}) async {
     try {
-      final appService = AppService();
-      
-      // If not initialized, wait for it (unlikely as it starts on HomeScreen)
-      if (!appService.isInitialized) {
-        await appService.initialize();
-      } else {
-        // Just sync lock status in case it changed
-        await appService.syncLockStatus();
+      if (!forceRefresh) {
+        final cached = await StorageService.getCachedApps();
+        if (cached.isNotEmpty) {
+          final lockedApps = await StorageService.getLockedApps();
+          final lockedSet = lockedApps.toSet();
+          
+          for (final app in cached) {
+            app.isLocked = lockedSet.contains(app.packageName);
+          }
+          
+          _updateAppState(cached, lockedSet);
+          return;
+        }
       }
 
-      final apps = List<AppInfo>.from(appService.apps);
-      final lockedSet = apps.where((a) => a.isLocked).map((a) => a.packageName).toSet();
+      final apps = await PlatformChannelService.getInstalledApps();
+      final lockedApps = await StorageService.getLockedApps();
+      final lockedSet = lockedApps.toSet();
 
-      // Sort: locked apps first, then alphabetically
-      apps.sort((a, b) {
-        if (a.isLocked && !b.isLocked) return -1;
-        if (!a.isLocked && b.isLocked) return 1;
-        return a.appName.toLowerCase().compareTo(b.appName.toLowerCase());
-      });
-
-      if (mounted) {
-        setState(() {
-          _apps = apps;
-          _filteredApps = apps;
-          _lockedPackages = lockedSet;
-          _isLoading = false;
-        });
+      for (final app in apps) {
+        app.isLocked = lockedSet.contains(app.packageName);
       }
+
+      // Save the fresh list to cache
+      await StorageService.saveCachedApps(apps);
+
+      _updateAppState(apps, lockedSet);
     } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load apps: $e')),
+        );
+      }
     }
+  }
+
+  void _updateAppState(List<AppInfo> apps, Set<String> lockedSet) {
+    // Sort: locked apps first, then alphabetically
+    apps.sort((a, b) {
+      if (a.isLocked && !b.isLocked) return -1;
+      if (!a.isLocked && b.isLocked) return 1;
+      return a.appName.toLowerCase().compareTo(b.appName.toLowerCase());
+    });
+
+    setState(() {
+      _apps = apps;
+      _filteredApps = apps;
+      _lockedPackages = lockedSet;
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _refreshApps() async {
+    setState(() => _isLoading = true);
+    await StorageService.clearAppCache();
+    await _loadApps(forceRefresh: true);
   }
 
   void _onSearchChanged(String query) {
@@ -104,130 +129,144 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
         ? const Center(
             child: CircularProgressIndicator(color: Color(0xFF007AFF)),
           )
-        : CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            cacheExtent: 1500, // Pre-render ~20 items ahead for smoother scrolling
-            slivers: [
-              // One UI Large Header
-              SliverAppBar(
-                backgroundColor: theme.scaffoldBackgroundColor,
-                expandedHeight: 180,
-                collapsedHeight: 80,
-                pinned: true,
-                flexibleSpace: FlexibleSpaceBar(
-                  titlePadding: const EdgeInsets.only(left: 24, bottom: 16),
-                  centerTitle: false,
-                  title: Text(
-                    'Select Apps',
-                    style: TextStyle(
-                      color: colorScheme.onSurface,
-                      fontSize: 26,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  background: Container(color: theme.scaffoldBackgroundColor),
-                ),
-                leading: IconButton(
-                  icon: Icon(Icons.arrow_back_ios_new_rounded, color: colorScheme.onSurface, size: 20),
-                  onPressed: () => Navigator.pop(context),
+        : Scrollbar(
+            interactive: true,
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(
+                  decelerationRate: ScrollDecelerationRate.normal,
                 ),
               ),
-
-              // Search Box Sliver
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                  child: Container(
-                    height: 54,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surface,
-                      borderRadius: BorderRadius.circular(100),
+              slivers: [
+                // One UI Large Header
+                SliverAppBar(
+                  backgroundColor: theme.scaffoldBackgroundColor,
+                  expandedHeight: 180,
+                  collapsedHeight: 80,
+                  pinned: true,
+                  flexibleSpace: FlexibleSpaceBar(
+                    titlePadding: const EdgeInsets.only(left: 24, bottom: 16),
+                    centerTitle: false,
+                    title: Text(
+                      'Select Apps',
+                      style: TextStyle(
+                        color: colorScheme.onSurface,
+                        fontSize: 26,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                    child: TextField(
-                      controller: _searchController,
-                      onChanged: _onSearchChanged,
-                      style: TextStyle(color: colorScheme.onSurface, fontSize: 16),
-                      decoration: InputDecoration(
-                        hintText: 'Search applications',
-                        hintStyle: TextStyle(color: colorScheme.onSurface.withOpacity(0.3)),
-                        prefixIcon: Padding(
-                          padding: const EdgeInsets.only(left: 12),
-                          child: Icon(Icons.search_rounded, color: colorScheme.onSurface.withOpacity(0.4), size: 22),
+                    background: Container(color: theme.scaffoldBackgroundColor),
+                  ),
+                  leading: IconButton(
+                    icon: Icon(Icons.arrow_back_ios_new_rounded, color: colorScheme.onSurface, size: 20),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  actions: [
+                    IconButton(
+                      icon: Icon(Icons.refresh_rounded, color: colorScheme.onSurface.withOpacity(0.7)),
+                      onPressed: _refreshApps,
+                      tooltip: 'Refresh app list',
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                ),
+
+                // Search Box Sliver
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                    child: Container(
+                      height: 54,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(100),
+                      ),
+                      child: TextField(
+                        controller: _searchController,
+                        onChanged: _onSearchChanged,
+                        style: TextStyle(color: colorScheme.onSurface, fontSize: 16),
+                        decoration: InputDecoration(
+                          hintText: 'Search applications',
+                          hintStyle: TextStyle(color: colorScheme.onSurface.withOpacity(0.3)),
+                          prefixIcon: Padding(
+                            padding: const EdgeInsets.only(left: 12),
+                            child: Icon(Icons.search_rounded, color: colorScheme.onSurface.withOpacity(0.4), size: 22),
+                          ),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                          suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: Icon(Icons.close_rounded, color: colorScheme.onSurface.withOpacity(0.5), size: 20),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  _onSearchChanged('');
+                                },
+                              )
+                            : null,
                         ),
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                        suffixIcon: _searchQuery.isNotEmpty
-                          ? IconButton(
-                              icon: Icon(Icons.close_rounded, color: colorScheme.onSurface.withOpacity(0.5), size: 20),
-                              onPressed: () {
-                                _searchController.clear();
-                                _onSearchChanged('');
-                              },
-                            )
-                          : null,
                       ),
                     ),
                   ),
                 ),
-              ),
 
-              // Info Badge Sliver
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
-                  child: Row(
-                    children: [
-                      Text(
-                        '$lockedCount locked ',
-                        style: const TextStyle(
-                          color: Color(0xFF007AFF),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
+                // Info Badge Sliver
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+                    child: Row(
+                      children: [
+                        Text(
+                          '$lockedCount locked ',
+                          style: const TextStyle(
+                            color: Color(0xFF007AFF),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
-                      Text(
-                        '· ${_filteredApps.length} apps',
-                        style: TextStyle(
-                          color: colorScheme.onSurface.withOpacity(0.4),
-                          fontSize: 13,
+                        Text(
+                          '· ${_filteredApps.length} apps',
+                          style: TextStyle(
+                            color: colorScheme.onSurface.withOpacity(0.4),
+                            fontSize: 13,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
 
-              // App List
-              _filteredApps.isEmpty
-                ? SliverFillRemaining(
-                    child: Center(
-                      child: Text(
-                        _searchQuery.isNotEmpty
-                          ? 'No results for "$_searchQuery"'
-                          : 'No apps found',
-                        style: TextStyle(color: colorScheme.onSurface.withOpacity(0.3)),
+                // App List
+                _filteredApps.isEmpty
+                  ? SliverFillRemaining(
+                      child: Center(
+                        child: Text(
+                          _searchQuery.isNotEmpty
+                            ? 'No results for "$_searchQuery"'
+                            : 'No apps found',
+                          style: TextStyle(color: colorScheme.onSurface.withOpacity(0.3)),
+                        ),
+                      ),
+                    )
+                  : SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final app = _filteredApps[index];
+                          return AppTile(
+                            key: ValueKey(app.packageName),
+                            appName: app.appName,
+                            packageName: app.packageName,
+                            isLocked: app.isLocked,
+                            onToggle: (value) => _onToggle(app, value),
+                          );
+                        },
+                        childCount: _filteredApps.length,
+                        addAutomaticKeepAlives: false,
+                        addRepaintBoundaries: true,
                       ),
                     ),
-                  )
-                : SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final app = _filteredApps[index];
-                        return AppTile(
-                          key: ValueKey(app.packageName),
-                          appName: app.appName,
-                          packageName: app.packageName,
-                          isLocked: app.isLocked,
-                          onToggle: (value) => _onToggle(app, value),
-                        );
-                      },
-                      childCount: _filteredApps.length,
-                      addAutomaticKeepAlives: false,
-                      addRepaintBoundaries: true,
-                    ),
-                  ),
-              const SliverToBoxAdapter(child: SizedBox(height: 32)),
-            ],
+                const SliverToBoxAdapter(child: SizedBox(height: 32)),
+              ],
+            ),
           ),
     );
   }

@@ -32,11 +32,6 @@ class IconCacheService {
     return icon;
   }
 
-  /// Manually put an icon into the cache (used for pre-fetched icons).
-  static void putIcon(String packageName, Uint8List icon) {
-    _cache[packageName] = icon;
-  }
-
   /// Clear the cache to free memory.
   static void clear() {
     _cache.clear();
