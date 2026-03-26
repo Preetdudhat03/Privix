@@ -20,59 +20,73 @@ class AppTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      decoration: BoxDecoration(
-        color: isLocked 
-          ? const Color(0xFF1E1B2E) 
-          : const Color(0xFF1A1A2E),
-        borderRadius: BorderRadius.circular(16),
-        border: isLocked 
-          ? Border.all(color: const Color(0xFF6C63FF).withOpacity(0.3), width: 1)
-          : null,
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        leading: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: const Color(0xFF2A2A3E),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: icon != null
-              ? Image.memory(icon!, width: 48, height: 48, fit: BoxFit.cover)
-              : const Icon(Icons.android, color: Color(0xFF6C63FF), size: 28),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: InkWell(
+        onTap: () => onToggle(!isLocked),
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1C1C1E),
+            borderRadius: BorderRadius.circular(24),
           ),
-        ),
-        title: Text(
-          appName,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 15,
-            fontWeight: FontWeight.w500,
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: icon != null
+                    ? Image.memory(icon!, width: 52, height: 52, fit: BoxFit.cover)
+                    : const Icon(Icons.android, color: Color(0xFF007AFF), size: 32),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      appName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'Inter',
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      packageName,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.4),
+                        fontSize: 12,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                value: isLocked,
+                onChanged: onToggle,
+                activeColor: const Color(0xFF007AFF),
+                activeTrackColor: const Color(0xFF007AFF).withOpacity(0.35),
+                inactiveThumbColor: const Color(0xFF8E8E93),
+                inactiveTrackColor: const Color(0xFF3A3A3C),
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ],
           ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        subtitle: Text(
-          packageName,
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.4),
-            fontSize: 11,
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        trailing: Switch(
-          value: isLocked,
-          onChanged: onToggle,
-          activeColor: const Color(0xFF6C63FF),
-          activeTrackColor: const Color(0xFF6C63FF).withOpacity(0.3),
-          inactiveThumbColor: const Color(0xFF555555),
-          inactiveTrackColor: const Color(0xFF333333),
         ),
       ),
     );

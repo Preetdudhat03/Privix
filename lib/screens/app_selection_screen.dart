@@ -93,112 +93,118 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
   Widget build(BuildContext context) {
     final lockedCount = _lockedPackages.length;
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D1A),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF0D0D1A),
-        elevation: 0,
-        title: const Text(
-          'Select Apps',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        iconTheme: const IconThemeData(color: Colors.white),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(68),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF1A1A2E),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFF333344)),
-              ),
-              child: TextField(
-                controller: _searchController,
-                onChanged: _onSearchChanged,
-                style: const TextStyle(color: Colors.white, fontSize: 14),
-                decoration: InputDecoration(
-                  hintText: 'Search apps...',
-                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-                  prefixIcon: Icon(Icons.search, color: Colors.white.withOpacity(0.4)),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.close, color: Colors.white54, size: 18),
-                        onPressed: () {
-                          _searchController.clear();
-                          _onSearchChanged('');
-                        },
-                      )
-                    : null,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
+      backgroundColor: Colors.black,
       body: _isLoading
         ? const Center(
-            child: CircularProgressIndicator(color: Color(0xFF6C63FF)),
+            child: CircularProgressIndicator(color: Color(0xFF007AFF)),
           )
-        : Column(
-            children: [
-              // Locked count badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF6C63FF).withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.lock, color: Color(0xFF6C63FF), size: 14),
-                          const SizedBox(width: 6),
-                          Text(
-                            '$lockedCount locked',
-                            style: const TextStyle(
-                              color: Color(0xFF6C63FF),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
+        : CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              // One UI Large Header
+              SliverAppBar(
+                backgroundColor: Colors.black,
+                expandedHeight: 180,
+                collapsedHeight: 80,
+                pinned: true,
+                flexibleSpace: FlexibleSpaceBar(
+                  titlePadding: const EdgeInsets.only(left: 24, bottom: 16),
+                  centerTitle: false,
+                  title: const Text(
+                    'Select Apps',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 26,
+                      fontWeight: FontWeight.w700,
                     ),
-                    const Spacer(),
-                    Text(
-                      '${_filteredApps.length} apps',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.4),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
+                  ),
+                  background: Container(color: Colors.black),
+                ),
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+                  onPressed: () => Navigator.pop(context),
                 ),
               ),
-              // App list
-              Expanded(
-                child: _filteredApps.isEmpty
-                  ? Center(
+
+              // Search Box Sliver
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                  child: Container(
+                    height: 54,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1C1C1E),
+                      borderRadius: BorderRadius.circular(100),
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: _onSearchChanged,
+                      style: const TextStyle(color: Colors.white, fontSize: 16),
+                      decoration: InputDecoration(
+                        hintText: 'Search applications',
+                        hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                        prefixIcon: Padding(
+                          padding: const EdgeInsets.only(left: 12),
+                          child: Icon(Icons.search_rounded, color: Colors.white.withOpacity(0.4), size: 22),
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                        suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.close_rounded, color: Colors.white54, size: 20),
+                              onPressed: () {
+                                _searchController.clear();
+                                _onSearchChanged('');
+                              },
+                            )
+                          : null,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // Info Badge Sliver
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+                  child: Row(
+                    children: [
+                      Text(
+                        '$lockedCount locked ',
+                        style: const TextStyle(
+                          color: Color(0xFF007AFF),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        '· ${_filteredApps.length} apps',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.4),
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // App List
+              _filteredApps.isEmpty
+                ? SliverFillRemaining(
+                    child: Center(
                       child: Text(
                         _searchQuery.isNotEmpty
-                          ? 'No apps found for "$_searchQuery"'
+                          ? 'No results for "$_searchQuery"'
                           : 'No apps found',
-                        style: TextStyle(color: Colors.white.withOpacity(0.5)),
+                        style: TextStyle(color: Colors.white.withOpacity(0.3)),
                       ),
-                    )
-                  : ListView.builder(
-                      physics: const BouncingScrollPhysics(),
-                      itemCount: _filteredApps.length,
-                      itemBuilder: (context, index) {
+                    ),
+                  )
+                : SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
                         final app = _filteredApps[index];
                         return AppTile(
                           appName: app.appName,
@@ -208,8 +214,10 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
                           onToggle: (value) => _onToggle(app, value),
                         );
                       },
+                      childCount: _filteredApps.length,
                     ),
-              ),
+                  ),
+              const SliverToBoxAdapter(child: SizedBox(height: 32)),
             ],
           ),
     );
