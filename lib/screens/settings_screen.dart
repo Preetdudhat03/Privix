@@ -45,9 +45,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showRelockPicker() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1C1C1E),
+      backgroundColor: theme.colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
@@ -60,15 +62,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.white24,
+                color: theme.colorScheme.onSurface.withOpacity(0.24),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'Relock Timer',
               style: TextStyle(
-                color: Colors.white,
+                color: theme.colorScheme.onSurface,
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
               ),
@@ -81,12 +83,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: Text(
                   option['label'] as String,
                   style: TextStyle(
-                    color: isSelected ? const Color(0xFF007AFF) : Colors.white,
+                    color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface,
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                   ),
                 ),
                 trailing: isSelected
-                  ? const Icon(Icons.check_circle_rounded, color: Color(0xFF007AFF), size: 24)
+                  ? Icon(Icons.check_circle_rounded, color: theme.colorScheme.primary, size: 24)
                   : null,
                 onTap: () {
                   _setRelockTimeout(value);
@@ -102,34 +104,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: _isLoading
-        ? const Center(child: CircularProgressIndicator(color: Color(0xFF007AFF)))
+        ? Center(child: CircularProgressIndicator(color: theme.colorScheme.primary))
         : CustomScrollView(
             physics: const BouncingScrollPhysics(),
             slivers: [
               // One UI Large Header
               SliverAppBar(
-                backgroundColor: Colors.black,
+                backgroundColor: theme.scaffoldBackgroundColor,
                 expandedHeight: 180,
                 collapsedHeight: 80,
                 pinned: true,
                 flexibleSpace: FlexibleSpaceBar(
                   titlePadding: const EdgeInsets.only(left: 24, bottom: 16),
                   centerTitle: false,
-                  title: const Text(
+                  title: Text(
                     'Settings',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: colorScheme.onSurface,
                       fontSize: 26,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  background: Container(color: Colors.black),
+                  background: Container(color: theme.scaffoldBackgroundColor),
                 ),
                 leading: IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+                  icon: Icon(Icons.arrow_back_ios_new_rounded, color: colorScheme.onSurface, size: 20),
                   onPressed: () => Navigator.pop(context),
                 ),
               ),
@@ -143,7 +148,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1C1C1E),
+                          color: theme.colorScheme.surface,
                           borderRadius: BorderRadius.circular(32),
                         ),
                         child: Row(
@@ -161,14 +166,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
+                                  Text(
                                     'Secure Auth',
-                                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                                    style: TextStyle(color: colorScheme.onSurface, fontSize: 16, fontWeight: FontWeight.w600),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     "Privix uses your device's Fingerprint, Face, or PIN.",
-                                    style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13),
+                                    style: TextStyle(color: colorScheme.onSurface.withOpacity(0.5), fontSize: 13),
                                   ),
                                 ],
                               ),
@@ -179,11 +184,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(height: 32),
 
                       // Behavior section
-                      _buildSectionHeader('Behavior'),
+                      _buildSectionHeader('Behavior', colorScheme),
                       const SizedBox(height: 12),
                       Container(
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1C1C1E),
+                          color: theme.colorScheme.surface,
                           borderRadius: BorderRadius.circular(32),
                         ),
                         child: _buildSettingTile(
@@ -192,16 +197,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           subtitle: _getRelockLabel(),
                           showDivider: false,
                           onTap: _showRelockPicker,
+                          colorScheme: colorScheme,
                         ),
                       ),
                       const SizedBox(height: 32),
 
                       // Permissions section
-                      _buildSectionHeader('Permissions'),
+                      _buildSectionHeader('Permissions', colorScheme),
                       const SizedBox(height: 12),
                       Container(
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1C1C1E),
+                          color: theme.colorScheme.surface,
                           borderRadius: BorderRadius.circular(32),
                         ),
                         child: Column(
@@ -212,6 +218,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               subtitle: 'Required for app detection',
                               showDivider: true,
                               onTap: () => PlatformChannelService.openAccessibilitySettings(),
+                              colorScheme: colorScheme,
                             ),
                             _buildSettingTile(
                               icon: Icons.layers_rounded,
@@ -219,6 +226,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               subtitle: 'Required for lock overlay',
                               showDivider: true,
                               onTap: () => PlatformChannelService.openOverlaySettings(),
+                              colorScheme: colorScheme,
                             ),
                             _buildSettingTile(
                               icon: Icons.battery_saver_rounded,
@@ -226,6 +234,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               subtitle: 'Prevent background death',
                               showDivider: false,
                               onTap: () => PlatformChannelService.openBatteryOptimizationSettings(),
+                              colorScheme: colorScheme,
                             ),
                           ],
                         ),
@@ -235,7 +244,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       // About
                       Text(
                         'Privix App Lock v1.0.0',
-                        style: TextStyle(color: Colors.white.withOpacity(0.25), fontSize: 13),
+                        style: TextStyle(color: colorScheme.onSurface.withOpacity(0.25), fontSize: 13),
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -260,13 +269,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return 'Immediately';
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(String title, ColorScheme colorScheme) {
     return Padding(
       padding: const EdgeInsets.only(left: 12, bottom: 8),
       child: Text(
         title,
         style: TextStyle(
-          color: Colors.white.withOpacity(0.5),
+          color: colorScheme.onSurface.withOpacity(0.5),
           fontSize: 13,
           fontWeight: FontWeight.w600,
         ),
@@ -280,6 +289,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required String subtitle,
     required bool showDivider,
     required VoidCallback onTap,
+    required ColorScheme colorScheme,
   }) {
     return Column(
       children: [
@@ -305,14 +315,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(title,
-                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500)),
+                        style: TextStyle(color: colorScheme.onSurface, fontSize: 16, fontWeight: FontWeight.w500)),
                       const SizedBox(height: 2),
                       Text(subtitle,
-                        style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12)),
+                        style: TextStyle(color: colorScheme.onSurface.withOpacity(0.4), fontSize: 12)),
                     ],
                   ),
                 ),
-                const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white24, size: 14),
+                Icon(Icons.arrow_forward_ios_rounded, color: colorScheme.onSurface.withOpacity(0.24), size: 14),
               ],
             ),
           ),
@@ -322,7 +332,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             padding: const EdgeInsets.only(left: 80, right: 20),
             child: Divider(
               height: 1,
-              color: Colors.white.withOpacity(0.05),
+              color: colorScheme.onSurface.withOpacity(0.05),
             ),
           ),
       ],

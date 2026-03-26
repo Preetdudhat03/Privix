@@ -28,17 +28,39 @@ class PrivixApp extends StatelessWidget {
     return MaterialApp(
       title: 'Privix',
       debugShowCheckedModeBanner: false,
+      themeMode: ThemeMode.system,
       theme: ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.light,
+        scaffoldBackgroundColor: const Color(0xFFF2F2F7), // One UI Light Gray
+        colorScheme: const ColorScheme.light(
+          primary: Color(0xFF007AFF),
+          onPrimary: Colors.white,
+          secondary: Color(0xFF007AFF),
+          surface: Colors.white,
+          onSurface: Colors.black,
+          error: Color(0xFFFF3B30),
+        ),
+        fontFamily: 'Inter',
+        cardTheme: CardThemeData(
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(32),
+          ),
+          elevation: 0,
+        ),
+      ),
+      darkTheme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
         scaffoldBackgroundColor: Colors.black,
         colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF007AFF), // Samsung Blue
+          primary: Color(0xFF007AFF),
           onPrimary: Colors.white,
           secondary: Color(0xFF007AFF),
-          surface: Color(0xFF1C1C1E), // One UI Surface Gray
+          surface: Color(0xFF1C1C1E),
           onSurface: Colors.white,
-          error: Color(0xFFFF453A), // One UI Error Red
+          error: Color(0xFFFF453A),
         ),
         fontFamily: 'Inter',
         cardTheme: CardThemeData(

@@ -20,6 +20,8 @@ class AppTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: InkWell(
@@ -28,7 +30,7 @@ class AppTile extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: const Color(0xFF1C1C1E),
+            color: theme.colorScheme.surface,
             borderRadius: BorderRadius.circular(24),
           ),
           child: Row(
@@ -39,12 +41,12 @@ class AppTile extends StatelessWidget {
                   width: 52,
                   height: 52,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.05),
+                    color: colorScheme.onSurface.withOpacity(0.05),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: icon != null
                     ? Image.memory(icon!, width: 52, height: 52, fit: BoxFit.cover)
-                    : const Icon(Icons.android, color: Color(0xFF007AFF), size: 32),
+                    : Icon(Icons.android, color: theme.colorScheme.primary, size: 32),
                 ),
               ),
               const SizedBox(width: 16),
@@ -54,8 +56,8 @@ class AppTile extends StatelessWidget {
                   children: [
                     Text(
                       appName,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: colorScheme.onSurface,
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                         fontFamily: 'Inter',
@@ -67,7 +69,7 @@ class AppTile extends StatelessWidget {
                     Text(
                       packageName,
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.4),
+                        color: colorScheme.onSurface.withOpacity(0.4),
                         fontSize: 12,
                       ),
                       maxLines: 1,
@@ -79,10 +81,10 @@ class AppTile extends StatelessWidget {
               Switch(
                 value: isLocked,
                 onChanged: onToggle,
-                activeColor: const Color(0xFF007AFF),
-                activeTrackColor: const Color(0xFF007AFF).withOpacity(0.35),
-                inactiveThumbColor: const Color(0xFF8E8E93),
-                inactiveTrackColor: const Color(0xFF3A3A3C),
+                activeColor: theme.colorScheme.primary,
+                activeTrackColor: theme.colorScheme.primary.withOpacity(0.35),
+                inactiveThumbColor: colorScheme.onSurface.withOpacity(0.4),
+                inactiveTrackColor: colorScheme.onSurface.withOpacity(0.12),
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
             ],

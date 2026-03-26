@@ -74,7 +74,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: _isLoading
         ? const Center(child: CircularProgressIndicator(color: Color(0xFF007AFF)))
         : RefreshIndicator(
@@ -87,7 +87,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               slivers: [
                 // App bar with One UI Large Title
                 SliverAppBar(
-                  backgroundColor: Colors.black,
+                  backgroundColor: theme.scaffoldBackgroundColor,
                   expandedHeight: 200,
                   collapsedHeight: 80,
                   floating: false,
@@ -98,14 +98,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     title: Text(
                       'Privix',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: colorScheme.onSurface,
                         fontSize: 28,
                         fontWeight: FontWeight.w700,
                         fontFamily: 'Inter',
                       ),
                     ),
                     background: Container(
-                      color: Colors.black,
+                      color: theme.scaffoldBackgroundColor,
                       child: Stack(
                         children: [
                           Positioned(
@@ -125,7 +125,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: IconButton(
-                        icon: const Icon(Icons.settings_outlined, color: Colors.white70),
+                        icon: Icon(Icons.settings_outlined, color: colorScheme.onSurface.withOpacity(0.7)),
                         onPressed: () => Navigator.pushNamed(context, '/settings')
                           .then((_) => _loadStatus()),
                       ),
@@ -143,12 +143,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         _buildStatusCard(),
                         const SizedBox(height: 24),
 
+                        /*
                         // Section Headers and Cards
                         _buildSectionTitle('Permissions'),
                         const SizedBox(height: 12),
                         Container(
                           decoration: BoxDecoration(
-                            color: const Color(0xFF1C1C1E),
+                            color: theme.colorScheme.surface,
                             borderRadius: BorderRadius.circular(32),
                           ),
                           child: Column(
@@ -181,12 +182,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           ),
                         ),
                         const SizedBox(height: 24),
+                        */
 
                         _buildSectionTitle('Quick Actions'),
                         const SizedBox(height: 12),
                         Container(
                           decoration: BoxDecoration(
-                            color: const Color(0xFF1C1C1E),
+                            color: theme.colorScheme.surface,
                             borderRadius: BorderRadius.circular(32),
                           ),
                           child: Column(
@@ -226,7 +228,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       width: double.infinity,
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
-        color: const Color(0xFF1C1C1E),
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(32),
       ),
       child: Column(
@@ -251,7 +253,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           Text(
             _isProtectionActive ? 'Protection Active' : 'Not Fully Protected',
             style: TextStyle(
-              color: Colors.white,
+              color: colorScheme.onSurface,
               fontSize: 22,
               fontWeight: FontWeight.w700,
               fontFamily: 'Inter',
@@ -264,7 +266,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               : _getInactiveReason(),
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: Colors.white.withOpacity(0.5),
+              color: colorScheme.onSurface.withOpacity(0.5),
               fontSize: 14,
             ),
           ),
@@ -286,7 +288,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       child: Text(
         title,
         style: TextStyle(
-          color: Colors.white.withOpacity(0.7),
+          color: colorScheme.onSurface.withOpacity(0.7),
           fontSize: 13,
           fontWeight: FontWeight.w600,
         ),
@@ -318,11 +320,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     shape: BoxShape.circle,
                     color: isEnabled
                       ? const Color(0xFF007AFF).withOpacity(0.12)
-                      : Colors.white.withOpacity(0.05),
+                      : colorScheme.onSurface.withOpacity(0.05),
                   ),
                   child: Icon(
                     icon,
-                    color: isEnabled ? const Color(0xFF007AFF) : Colors.white38,
+                    color: isEnabled ? const Color(0xFF007AFF) : colorScheme.onSurface.withOpacity(0.38),
                     size: 22,
                   ),
                 ),
@@ -334,7 +336,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       Text(
                         title,
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: colorScheme.onSurface,
                           fontSize: 15,
                           fontWeight: FontWeight.w500,
                         ),
@@ -352,7 +354,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 ),
                 Icon(
                   isEnabled ? Icons.check_circle_rounded : Icons.arrow_forward_ios_rounded,
-                  color: isEnabled ? const Color(0xFF007AFF) : Colors.white24,
+                  color: isEnabled ? const Color(0xFF007AFF) : colorScheme.onSurface.withOpacity(0.24),
                   size: isEnabled ? 24 : 14,
                 ),
               ],
@@ -405,7 +407,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       Text(
                         title,
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: colorScheme.onSurface,
                           fontSize: 15,
                           fontWeight: FontWeight.w500,
                         ),
@@ -421,7 +423,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     ],
                   ),
                 ),
-                const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white24, size: 14),
+                const Icon(Icons.arrow_forward_ios_rounded, color: colorScheme.onSurface.withOpacity(0.24), size: 14),
               ],
             ),
           ),

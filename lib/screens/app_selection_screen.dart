@@ -91,9 +91,12 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final lockedCount = _lockedPackages.length;
+
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: _isLoading
         ? const Center(
             child: CircularProgressIndicator(color: Color(0xFF007AFF)),
@@ -103,25 +106,25 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
             slivers: [
               // One UI Large Header
               SliverAppBar(
-                backgroundColor: Colors.black,
+                backgroundColor: theme.scaffoldBackgroundColor,
                 expandedHeight: 180,
                 collapsedHeight: 80,
                 pinned: true,
                 flexibleSpace: FlexibleSpaceBar(
                   titlePadding: const EdgeInsets.only(left: 24, bottom: 16),
                   centerTitle: false,
-                  title: const Text(
+                  title: Text(
                     'Select Apps',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: colorScheme.onSurface,
                       fontSize: 26,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  background: Container(color: Colors.black),
+                  background: Container(color: theme.scaffoldBackgroundColor),
                 ),
                 leading: IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+                  icon: Icon(Icons.arrow_back_ios_new_rounded, color: colorScheme.onSurface, size: 20),
                   onPressed: () => Navigator.pop(context),
                 ),
               ),
@@ -133,25 +136,25 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
                   child: Container(
                     height: 54,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1C1C1E),
+                      color: theme.colorScheme.surface,
                       borderRadius: BorderRadius.circular(100),
                     ),
                     child: TextField(
                       controller: _searchController,
                       onChanged: _onSearchChanged,
-                      style: const TextStyle(color: Colors.white, fontSize: 16),
+                      style: TextStyle(color: colorScheme.onSurface, fontSize: 16),
                       decoration: InputDecoration(
                         hintText: 'Search applications',
-                        hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                        hintStyle: TextStyle(color: colorScheme.onSurface.withOpacity(0.3)),
                         prefixIcon: Padding(
                           padding: const EdgeInsets.only(left: 12),
-                          child: Icon(Icons.search_rounded, color: Colors.white.withOpacity(0.4), size: 22),
+                          child: Icon(Icons.search_rounded, color: colorScheme.onSurface.withOpacity(0.4), size: 22),
                         ),
                         border: InputBorder.none,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                         suffixIcon: _searchQuery.isNotEmpty
                           ? IconButton(
-                              icon: const Icon(Icons.close_rounded, color: Colors.white54, size: 20),
+                              icon: Icon(Icons.close_rounded, color: colorScheme.onSurface.withOpacity(0.5), size: 20),
                               onPressed: () {
                                 _searchController.clear();
                                 _onSearchChanged('');
@@ -181,7 +184,7 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
                       Text(
                         '· ${_filteredApps.length} apps',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.4),
+                          color: colorScheme.onSurface.withOpacity(0.4),
                           fontSize: 13,
                         ),
                       ),
@@ -198,7 +201,7 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
                         _searchQuery.isNotEmpty
                           ? 'No results for "$_searchQuery"'
                           : 'No apps found',
-                        style: TextStyle(color: Colors.white.withOpacity(0.3)),
+                        style: TextStyle(color: colorScheme.onSurface.withOpacity(0.3)),
                       ),
                     ),
                   )
