@@ -97,28 +97,31 @@ class AppLockAccessibilityService : AccessibilityService() {
         
         val eventType = event.eventType
         
-        // Rapid filter: we only care about window and window state changes
+        // 1. Rapid filter: we only care about window and content changes
         if (eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && 
-            eventType != AccessibilityEvent.TYPE_WINDOWS_CHANGED) return
+            eventType != AccessibilityEvent.TYPE_WINDOWS_CHANGED &&
+            eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) return
 
-        // Get the package name as fast as possible. 
-        // We prioritize getTopPackageName() to avoid background events from clobbering our tracking.
+        // 2. High-Speed Detection (Zero Delay)
+        // Check the direct event first — this is the fastest path.
         val eventPackage = event.packageName?.toString()
-        val topPackage = getTopPackageName()
+        if (eventPackage != null && isServicePackage(eventPackage)) return // Ignore system components early
         
-        // Final resolved package name for this interaction
-        val packageName = topPackage ?: eventPackage ?: return
+        // Use the event package if it's already in our cache for immediate locking
+        var packageName = eventPackage
+        if (packageName == null || !lockedAppsCache.contains(packageName)) {
+            // Only traverse the full hierarchy if the event doesn't tell us enough.
+            // This is "Predicted Detection".
+            packageName = getTopPackageName() ?: eventPackage ?: return
+        }
 
-        // Sync locked apps cache promptly
+        // Sync locked apps cache promptly if it's stale
         if (lockedAppsCache.isEmpty() || packageName == "com.privix.privix") {
             lockedAppsCache = lockPrefs.getLockedApps()
         }
 
-        // 1. Handle System/Transient windows (Notifications, Dialogs, etc.)
-        // We MUST check the event package (trigger) and the top package.
-        // If either is a system component, treat it as a system interaction.
-        if (eventPackage == "com.android.systemui" || eventPackage == "android" ||
-            topPackage == "com.android.systemui" || topPackage == "android") {
+        // 4. Handle System/Transient windows (Notifications, Dialogs, etc.)
+        if (isServicePackage(eventPackage) || isServicePackage(packageName)) {
             returningFromSystemWindow = true
             return
         }
@@ -179,11 +182,16 @@ class AppLockAccessibilityService : AccessibilityService() {
         lastTriggeredPackage = packageName
         lastTriggerTime = now
 
-        Log.d(TAG, "Triggering Lock for: $packageName")
-
-        // 9. ACTION: Show Curtain immediately
+        // 11. ACTION: Show Curtain immediately (Kotlin native window)
         CurtainManager.show(this)
+        
+        // 12. Show Authentication (Flutter Activity)
         showAuthScreen(packageName)
+    }
+
+    private fun isServicePackage(pkg: String?): Boolean {
+        if (pkg == null) return false
+        return pkg == "com.android.systemui" || pkg == "android" || pkg == "com.privix.privix"
     }
 
     /**
