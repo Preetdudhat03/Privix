@@ -84,6 +84,12 @@ class AuthActivity : AppCompatActivity() {
         }, 50)
     }
 
+    override fun onPause() {
+        super.onPause()
+        // Ensure the curtain is hidden if the user backgrounds the auth screen
+        CurtainManager.hide()
+    }
+
     private fun exitToHome() {
         CurtainManager.hide()
         val homeIntent = Intent(Intent.ACTION_MAIN).apply {

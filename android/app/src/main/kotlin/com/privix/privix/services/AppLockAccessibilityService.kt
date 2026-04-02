@@ -105,7 +105,7 @@ class AppLockAccessibilityService : AccessibilityService() {
         // 2. High-Speed Detection (Zero Delay)
         // Check the direct event first — this is the fastest path.
         val eventPackage = event.packageName?.toString()
-        if (eventPackage != null && isServicePackage(eventPackage)) return // Ignore system components early
+        if (isServicePackage(eventPackage)) return // Ignore system components early
         
         // Use the event package if it's already in our cache for immediate locking
         var packageName = eventPackage
@@ -113,6 +113,17 @@ class AppLockAccessibilityService : AccessibilityService() {
             // Only traverse the full hierarchy if the event doesn't tell us enough.
             // This is "Predicted Detection".
             packageName = getTopPackageName() ?: eventPackage ?: return
+        }
+        
+        // 3. Transition Sanity Check (Fix "Lock on Leave")
+        // If the event package is locked, but the actual top window has already changed 
+        // to a system component (like the Launcher), do NOT trigger the lock.
+        val topPackage = getTopPackageName()
+        if (eventPackage != null && lockedAppsCache.contains(eventPackage)) {
+            if (topPackage != null && isServicePackage(topPackage)) {
+                // We are clearly exiting the app to a system screen.
+                return
+            }
         }
 
         // Sync locked apps cache promptly if it's stale
@@ -191,7 +202,13 @@ class AppLockAccessibilityService : AccessibilityService() {
 
     private fun isServicePackage(pkg: String?): Boolean {
         if (pkg == null) return false
-        return pkg == "com.android.systemui" || pkg == "android" || pkg == "com.privix.privix"
+        // Include launcher, settings, and our own app for immediate skipping
+        return pkg == "com.android.systemui" || 
+               pkg == "android" || 
+               pkg == "com.privix.privix" ||
+               pkg == "com.android.settings" ||
+               pkg == "com.android.packageinstaller" ||
+               pkg.contains("launcher", ignoreCase = true)
     }
 
     /**
