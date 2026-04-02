@@ -97,106 +97,112 @@ class AppLockAccessibilityService : AccessibilityService() {
         
         val eventType = event.eventType
         
-        // 1. Rapid filter: we only care about window and content changes
+        // 1. Filter: we only care about window and content changes
         if (eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && 
             eventType != AccessibilityEvent.TYPE_WINDOWS_CHANGED &&
             eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) return
 
-        // 2. High-Speed Detection (Zero Delay)
-        // Check the direct event first — this is the fastest path.
         val eventPackage = event.packageName?.toString()
-        if (isServicePackage(eventPackage)) return // Ignore system components early
+        val topPackage = getTopPackageName()
         
-        // Use the event package if it's already in our cache for immediate locking
+        // A. Resolve actual active package
         var packageName = eventPackage
         if (packageName == null || !lockedAppsCache.contains(packageName)) {
-            // Only traverse the full hierarchy if the event doesn't tell us enough.
-            // This is "Predicted Detection".
-            packageName = getTopPackageName() ?: eventPackage ?: return
-        }
-        
-        // 3. Transition Sanity Check (Fix "Lock on Leave")
-        // If the event package is locked, but the actual top window has already changed 
-        // to a system component (like the Launcher), do NOT trigger the lock.
-        val topPackage = getTopPackageName()
-        if (eventPackage != null && lockedAppsCache.contains(eventPackage)) {
-            if (topPackage != null && isServicePackage(topPackage)) {
-                // We are clearly exiting the app to a system screen.
-                return
-            }
+            packageName = topPackage ?: eventPackage ?: return
         }
 
-        // Sync locked apps cache promptly if it's stale
+        // B. SYNC locked apps cache promptly
         if (lockedAppsCache.isEmpty() || packageName == "com.privix.privix") {
             lockedAppsCache = lockPrefs.getLockedApps()
         }
 
-        // 4. Handle System/Transient windows (Notifications, Dialogs, etc.)
-        if (isServicePackage(eventPackage) || isServicePackage(packageName)) {
-            returningFromSystemWindow = true
+        val previousPackage = lastForegroundPackage
+
+        // C. SERVICE PACKAGE HANDLING (Launcher, Settings, etc.)
+        if (isServicePackage(packageName)) {
+            // --- EXIT DETECTION ---
+            // If we are moving FROM a locked app TO a service screen, revoke unlock.
+            if (previousPackage != null && !isServicePackage(previousPackage)) {
+                if (lockedAppsCache.contains(previousPackage)) {
+                    Log.d(TAG, "User exited $previousPackage to $packageName. Revoking session.")
+                    UnlockManager.forgetApp(previousPackage)
+                    lockPrefs.removeAppUnlocked(previousPackage)
+                    // We DO NOT set lastForegroundPackage = null here anymore. 
+                    // We keep it so we can detect backgrounding events of the SAME app.
+                }
+            }
+            
+            if (packageName != "com.privix.privix") {
+                returningFromSystemWindow = true
+                // settling on a system window now, can clear the tracker
+                lastForegroundPackage = packageName 
+            }
             return
         }
 
-        // Ignore our own app
+        // Ignore our own activity logic
         if (packageName == "com.privix.privix") return
 
-        val previousPackage = lastForegroundPackage
-        
-        // 2. Optimization: If returning from notification panel/system window to the SAME app, 
-        // ignore the event to prevent re-locking the app already in use.
+        // D. TRANSITION DIRECTION CHECK (Entry vs Exit)
+        // If the top window is the Launcher, but we see a locked app event:
+        if (topPackage != null && isServicePackage(topPackage)) {
+            if (packageName == previousPackage) {
+                // This is almost certainly an EXIT (app is backgrounding). Skip lock.
+                return
+            }
+        }
+
+        // E. NAVIGATION CHECKS
+        // 1. Same-app transition skip (unless session was revoked)
+        if (packageName == previousPackage && !returningFromSystemWindow) {
+            return
+        }
+
+        // 2. Returning from notifications panel etc.
         if (returningFromSystemWindow && packageName == previousPackage) {
             returningFromSystemWindow = false
             return
         }
-
-        // Reset system window flag
+        
         returningFromSystemWindow = false
 
-        // 3. Same-app navigation skip
-        if (packageName == previousPackage) return
-        
-        // ONLY update the foreground package AFTER passing the same-app check.
-        // This prevents transient window state events (like those from background launchers)
-        // from clobbering our tracking of the user's active session.
-        lastForegroundPackage = packageName
-        
-        // 4. Launcher skip
-        if (packageName.contains("launcher", ignoreCase = true) || 
-            packageName == "com.android.launcher" || 
-            packageName == "com.android.launcher3" || 
-            packageName == "com.google.android.apps.nexuslauncher") {
-            return
-        }
+        // E. LOCK REQUIREMENT CHECKS
+        // 1. Check if the current app needs locking
+        val isLocked = lockedAppsCache.contains(packageName) || lockPrefs.isAppLocked(packageName)
+        if (!isLocked) return
 
-        // 5. System utility skip
-        if (packageName == "com.android.settings" || packageName == "com.android.packageinstaller") {
-            return
-        }
-
-        // 6. Fast Lock-Check (Critical Path)
-        if (!lockedAppsCache.contains(packageName)) {
-            if (!lockPrefs.isAppLocked(packageName)) return
-            lockedAppsCache = lockPrefs.getLockedApps()
-        }
-
-        // 7. Check Unlock States
+        // 2. Check if it's already unlocked in this session
         if (UnlockManager.isAppSessionUnlocked(packageName) || lockPrefs.isAppCurrentlyUnlocked(packageName)) {
+            lastForegroundPackage = packageName
             return
         }
 
-        // 8. Debounce rapid events
+        // F. PREDICTIVE & DIRECTIONAL FILTERING
+        // To prevent "Lock on Leave", only trigger predictive locks (when Launcher is on top) 
+        // if this is an actual Window State Change (a launch).
+        if (topPackage != null && isServicePackage(topPackage)) {
+            if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+                // Ignore background redraws or content changes for exiting apps.
+                return
+            }
+        }
+
+        // G. DEBOUNCE & TRIGGER
         val now = System.currentTimeMillis()
         if (packageName == lastTriggeredPackage && (now - lastTriggerTime) < DEBOUNCE_MS) {
             return
         }
 
+        lastForegroundPackage = packageName
         lastTriggeredPackage = packageName
         lastTriggerTime = now
 
-        // 11. ACTION: Show Curtain immediately (Kotlin native window)
+        Log.d(TAG, "TRIGGERING LOCK for: $packageName")
+
+        // 1. Show curtain instantly (PREDICTIVE ZERO-FLICKER)
         CurtainManager.show(this)
         
-        // 12. Show Authentication (Flutter Activity)
+        // 2. Launch Auth Activity
         showAuthScreen(packageName)
     }
 

@@ -111,6 +111,10 @@ class LockPreferences(context: Context) {
         return (System.currentTimeMillis() - timestamp) < timeout
     }
 
+    fun removeAppUnlocked(packageName: String) {
+        prefs.edit().remove("unlocked_$packageName").commit()
+    }
+
     fun clearUnlockedApps() {
         val editor = prefs.edit()
         for (key in prefs.all.keys) {

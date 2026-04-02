@@ -10,21 +10,39 @@ import android.util.Log
 object UnlockManager {
     private val unlockedApps = mutableMapOf<String, Long>()
     
-    // Minimum time an app stays unlocked regardless of settings (to prevent bounce-back loops)
-    private const val SESSION_GRACE_PERIOD_MS = 15000L
+    // Minimum time an app stays unlocked (to prevent bounce-back loops during Auth Activity start)
+    private const val SESSION_GRACE_PERIOD_MS = 1000L
 
     @Synchronized
     fun markUnlocked(packageName: String) {
-        Log.d("UnlockManager", "Marking $packageName as session-unlocked")
-        unlockedApps[packageName] = System.currentTimeMillis()
+        val now = System.currentTimeMillis()
+        Log.d("UnlockManager", "Marking $packageName as session-unlocked at $now")
+        unlockedApps[packageName] = now
+    }
+
+    /**
+     * Immediately revokes the unlock status for a specific app.
+     * Use this when the user leaves the app to ensure re-lock on return.
+     */
+    @Synchronized
+    fun forgetApp(packageName: String) {
+        if (unlockedApps.containsKey(packageName)) {
+            Log.d("UnlockManager", "Forgetting $packageName (Strict Security)")
+            unlockedApps.remove(packageName)
+        }
     }
 
     @Synchronized
     fun isAppSessionUnlocked(packageName: String): Boolean {
+        val now = System.currentTimeMillis()
         val lastUnlock = unlockedApps[packageName] ?: return false
-        val isUnlocked = (System.currentTimeMillis() - lastUnlock) < SESSION_GRACE_PERIOD_MS
+        val diff = now - lastUnlock
+        val isUnlocked = diff < SESSION_GRACE_PERIOD_MS
+        
         if (isUnlocked) {
-            Log.d("UnlockManager", "App $packageName is in session grace period")
+            Log.d("UnlockManager", "App $packageName is in session grace period (diff: ${diff}ms)")
+        } else {
+            // Log.d("UnlockManager", "App $packageName unlock expired (diff: ${diff}ms)")
         }
         return isUnlocked
     }
