@@ -82,6 +82,10 @@ class AppLockAccessibilityService : AccessibilityService() {
     private var lastTriggeredPackage: String? = null
     private var lastTriggerTime: Long = 0
     
+    // Transition Guard: avoid locking apps we JUST left (prevents background noise)
+    private var lastExitedPackage: String? = null
+    private var lastExitedTime: Long = 0
+    
     // Handler for debouncing rapid window events
     private val debounceHandler = Handler(Looper.getMainLooper())
 
