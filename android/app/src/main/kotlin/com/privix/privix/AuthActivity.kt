@@ -11,6 +11,7 @@ import com.privix.privix.services.UnlockManager
 import com.privix.privix.services.CurtainManager
 
 class AuthActivity : AppCompatActivity() {
+    private var wasCurtainHidden = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,7 +46,7 @@ class AuthActivity : AppCompatActivity() {
                     Log.d("AuthActivity", "Auth success for $packageName")
                     UnlockManager.markUnlocked(packageName)
                     LockPreferences(this@AuthActivity).markAppUnlocked(packageName)
-                    finish()
+                    finishWithReason("AuthSuccess")
                 }
 
                 override fun onAuthenticationFailed() {
@@ -78,29 +79,46 @@ class AuthActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         // Hide the curtain only when AuthActivity is in the foreground and ready.
-        // We use a slightly longer delay to ensure the system biometric dialog 
-        // has started its own transition, avoiding a flash of the underlying app.
+        // Increased delay to 300ms (from 150ms) to ensure the system biometric dialog 
+        // is fully visible before removing our overlay, preventing a flicker.
         window.decorView.postDelayed({
-            if (!isFinishing) {
-                CurtainManager.hide()
+            if (!isFinishing && !wasCurtainHidden) {
+                hideCurtain("ActivityResumed")
             }
-        }, 150)
+        }, 300)
+    }
+
+    /**
+     * Helper to safely hide curtain once.
+     */
+    private fun hideCurtain(reason: String) {
+        if (!wasCurtainHidden) {
+            CurtainManager.hide(reason)
+            wasCurtainHidden = true
+        }
+    }
+
+    private fun finishWithReason(reason: String) {
+        hideCurtain(reason)
+        finish()
     }
 
     override fun finish() {
-        // Ensure curtain is gone before we return to the target app
-        CurtainManager.hide()
+        hideCurtain("FinishCalled")
         super.finish()
     }
 
     override fun onPause() {
         super.onPause()
-        // Ensure the curtain is hidden if the user backgrounds the auth screen
-        CurtainManager.hide()
+        // If we are leaving the app (not just showing a dialog), ensure curtain is gone.
+        // But if were just paused by the biometric prompt, don't hide yet if the timer is still running.
+        if (isFinishing) {
+            hideCurtain("ActivityPausingFinal")
+        }
     }
 
     private fun exitToHome() {
-        CurtainManager.hide()
+        hideCurtain("ExitToHome")
         val homeIntent = Intent(Intent.ACTION_MAIN).apply {
             addCategory(Intent.CATEGORY_HOME)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -110,7 +128,7 @@ class AuthActivity : AppCompatActivity() {
     }
     
     override fun onDestroy() {
-        CurtainManager.hide() // Safety net
+        hideCurtain("ActivityDestroyed")
         super.onDestroy()
     }
     

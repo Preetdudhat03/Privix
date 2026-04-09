@@ -28,6 +28,10 @@ object CurtainManager {
             curtainView = View(context).apply {
                 setBackgroundColor(0xFF000000.toInt()) // One UI 7 AMOLED Black
                 visibility = View.GONE
+                // Stability Fixes: prevent the curtain from stealing focus or being read by accessibility
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                isFocusable = false
+                isClickable = false
             }
 
             layoutParams = WindowManager.LayoutParams(
@@ -68,10 +72,12 @@ object CurtainManager {
         }
     }
 
-    fun hide() {
+    fun hide(reason: String = "Unknown") {
         try {
-            curtainView?.visibility = View.GONE
-            Log.d("CurtainManager", "Curtain toggled: GONE")
+            if (curtainView?.visibility != View.GONE) {
+                curtainView?.visibility = View.GONE
+                Log.d("CurtainManager", "Curtain toggled: GONE (Reason: $reason)")
+            }
         } catch (e: Exception) {
             Log.e("CurtainManager", "Error hiding curtain", e)
         }
