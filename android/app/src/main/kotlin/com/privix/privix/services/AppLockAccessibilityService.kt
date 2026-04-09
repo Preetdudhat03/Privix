@@ -216,7 +216,16 @@ class AppLockAccessibilityService : AccessibilityService() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             val windowList = windows
             if (!windowList.isNullOrEmpty()) {
-                // Iterate backwards to find the top-most application window
+                // 1. Iterate backwards to find the top-most application window that actually has focus
+                // This prevents background flashes (like Launcher updating behind a screenshot) from triggering false exits.
+                for (i in windowList.size - 1 downTo 0) {
+                    val window = windowList[i]
+                    if (window.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_APPLICATION && window.isFocused) {
+                        return window.root?.packageName?.toString()
+                    }
+                }
+                
+                // 2. Fallback to just the top-most application window regardless of focus
                 for (i in windowList.size - 1 downTo 0) {
                     val window = windowList[i]
                     if (window.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_APPLICATION) {
