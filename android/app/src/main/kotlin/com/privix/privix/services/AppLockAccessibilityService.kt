@@ -152,7 +152,7 @@ class AppLockAccessibilityService : AccessibilityService() {
     }
 
     private fun processStableAppSwitch(targetPackage: String) {
-        // Resolve actual active top package if available to be extra safe
+        // Resolve actual active top package focusing heavily on what user is interacting with
         val currentTopPackage = getTopPackageName()
         
         // If the *actual* top package is still a system overlay, abort. 
@@ -175,7 +175,19 @@ class AppLockAccessibilityService : AccessibilityService() {
         val isHomeOrIgnored = HOME_PACKAGES.contains(packageName) || IGNORED_SYSTEM_APPS.contains(packageName)
         
         if (isHomeOrIgnored) {
-            // User exited a locked app and went back to Launcher or Settings
+            // CRITICAL FIX: If we see a Home package event, ensure it's not just a phantom background event 
+            // caused by UI cleanups (like Edge Panel closing or Screenshot toolbar disappearing).
+            // A genuine Home exit means the launcher ACTUALLY has window focus.
+            val isGenuineHomeExit = isPackageTrulyFocused(packageName)
+            val isIgnoredSystemApp = IGNORED_SYSTEM_APPS.contains(packageName)
+            
+            // If it's the Launcher but not in focus, it's a momentary screen flash. Abort.
+            if (!isIgnoredSystemApp && !isGenuineHomeExit) {
+                Log.d(TAG, "Phantom Launcher event blocked (no focus): $packageName")
+                return
+            }
+
+            // User genuinely exited a locked app and went back to Launcher or Settings
             if (previousPackage != null && !HOME_PACKAGES.contains(previousPackage) && !IGNORED_SYSTEM_APPS.contains(previousPackage)) {
                 if (lockedAppsCache.contains(previousPackage)) {
                     Log.d(TAG, "User exited $previousPackage to $packageName. Revoking session.")
@@ -222,14 +234,12 @@ class AppLockAccessibilityService : AccessibilityService() {
 
     /**
      * Inspects the window hierarchy to find the topmost application package.
-     * This is much faster and more reliable than waiting for a WindowState event.
      */
     private fun getTopPackageName(): String? {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             val windowList = windows
             if (!windowList.isNullOrEmpty()) {
                 // 1. Iterate backwards to find the top-most application window that actually has focus
-                // This prevents background flashes (like Launcher updating behind a screenshot) from triggering false exits.
                 for (i in windowList.size - 1 downTo 0) {
                     val window = windowList[i]
                     if (window.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_APPLICATION && window.isFocused) {
@@ -238,16 +248,38 @@ class AppLockAccessibilityService : AccessibilityService() {
                 }
                 
                 // 2. Fallback to just the top-most application window regardless of focus
+                // Note: We skip returning the Launcher here if it lacks focus to prevent false background exits
                 for (i in windowList.size - 1 downTo 0) {
                     val window = windowList[i]
                     if (window.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_APPLICATION) {
-                        return window.root?.packageName?.toString()
+                        val pkg = window.root?.packageName?.toString()
+                        if (pkg != null && !HOME_PACKAGES.contains(pkg)) {
+                            return pkg
+                        }
                     }
                 }
             }
         }
         // Fallback to the active window root
         return rootInActiveWindow?.packageName?.toString()
+    }
+    
+    /**
+     * Confirms if the given package currently actively holds window focus.
+     */
+    private fun isPackageTrulyFocused(pkgToCheck: String): Boolean {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            val windowList = windows
+            if (!windowList.isNullOrEmpty()) {
+                for (i in windowList.size - 1 downTo 0) {
+                    val window = windowList[i]
+                    if (window.isFocused) {
+                        return window.root?.packageName?.toString() == pkgToCheck
+                    }
+                }
+            }
+        }
+        return true // Fallback to safe passage if we can't reliably check focus
     }
 
     private fun showAuthScreen(packageName: String) {
