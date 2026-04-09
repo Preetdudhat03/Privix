@@ -193,6 +193,10 @@ class AppLockAccessibilityService : AccessibilityService() {
                     Log.d(TAG, "User exited $previousPackage to $packageName. Revoking session.")
                     UnlockManager.forgetApp(previousPackage)
                     lockPrefs.removeAppUnlocked(previousPackage)
+                    
+                    // --- TRANSITION GUARD: Track that we just left this app ---
+                    lastExitedPackage = previousPackage
+                    lastExitedTime = System.currentTimeMillis()
                 }
             }
             lastForegroundPackage = packageName
@@ -209,6 +213,17 @@ class AppLockAccessibilityService : AccessibilityService() {
         if (!isLocked) {
              lastForegroundPackage = packageName
              return
+        }
+        
+        // --- TRANSITION GUARD CHECK ---
+        val now = System.currentTimeMillis()
+        if (packageName == lastExitedPackage && (now - lastExitedTime) < 1500) {
+            // We just exited this app. Check if it's REALLY focused before locking again.
+            // If the launcher is technically still visible or this app doesn't have focus, ignore.
+            if (!isPackageTrulyFocused(packageName)) {
+                // Log.d(TAG, "Post-exit phantom event for $packageName suppressed.")
+                return
+            }
         }
 
         // 6. SESSION CHECK: Check if it's already unlocked in this active session
