@@ -116,6 +116,18 @@ class AppLockAccessibilityService : AccessibilityService() {
         Log.d(TAG, "AppLockAccessibilityService connected")
     }
 
+    // Helper to dynamically check if a package is a system overlay, including all Samsung Edge Panels
+    private fun isSystemOverlay(pkg: String): Boolean {
+        if (SYSTEM_OVERLAYS.contains(pkg)) return true
+        
+        // Catch all Samsung Edge Panels dynamically (appsedge, taskedge, clipboardedge, peopleedge)
+        if (pkg.startsWith("com.samsung.") && pkg.contains("edge", ignoreCase = true)) return true
+        if (pkg.startsWith("com.samsung.android.app.smartcapture")) return true
+        if (pkg.startsWith("com.samsung.android.smartclip")) return true
+        
+        return false
+    }
+
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         // Optimize: We only care about explicit window state changes (app launches/popups).
         // Ignoring TYPE_WINDOW_CONTENT_CHANGED & TYPE_WINDOWS_CHANGED drastically reduces noise.
@@ -125,7 +137,7 @@ class AppLockAccessibilityService : AccessibilityService() {
         
         // 1. FILTER OUT NOISE: Ignore all known overlays completely (e.g. Edge Panel, Bluetooth popup).
         // They do not signify that the user navigated away from the application.
-        if (SYSTEM_OVERLAYS.contains(eventPackage)) {
+        if (isSystemOverlay(eventPackage)) {
             Log.d(TAG, "Ignoring system overlay: $eventPackage")
             return
         }
@@ -144,7 +156,7 @@ class AppLockAccessibilityService : AccessibilityService() {
         val currentTopPackage = getTopPackageName()
         
         // If the *actual* top package is still a system overlay, abort. 
-        if (currentTopPackage != null && SYSTEM_OVERLAYS.contains(currentTopPackage)) {
+        if (currentTopPackage != null && isSystemOverlay(currentTopPackage)) {
             Log.d(TAG, "Top package is still an overlay ($currentTopPackage), aborting.")
             return
         }
