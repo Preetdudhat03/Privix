@@ -78,10 +78,19 @@ class AuthActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         // Hide the curtain only when AuthActivity is in the foreground and ready.
-        // We use post to ensure the window is actually rendered before removing the overlay.
+        // We use a slightly longer delay to ensure the system biometric dialog 
+        // has started its own transition, avoiding a flash of the underlying app.
         window.decorView.postDelayed({
-            CurtainManager.hide()
-        }, 50)
+            if (!isFinishing) {
+                CurtainManager.hide()
+            }
+        }, 150)
+    }
+
+    override fun finish() {
+        // Ensure curtain is gone before we return to the target app
+        CurtainManager.hide()
+        super.finish()
     }
 
     override fun onPause() {

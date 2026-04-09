@@ -194,13 +194,18 @@ class AppLockAccessibilityService : AccessibilityService() {
             // User genuinely exited a locked app and went back to Launcher or Settings
             if (previousPackage != null && !HOME_PACKAGES.contains(previousPackage) && !IGNORED_SYSTEM_APPS.contains(previousPackage)) {
                 if (lockedAppsCache.contains(previousPackage)) {
-                    Log.d(TAG, "User exited $previousPackage to $packageName. Revoking session.")
-                    UnlockManager.forgetApp(previousPackage)
-                    lockPrefs.removeAppUnlocked(previousPackage)
-                    
-                    // --- TRANSITION GUARD: Track that we just left this app ---
-                    lastExitedPackage = previousPackage
-                    lastExitedTime = System.currentTimeMillis()
+                    // NEVER revoke session if we are transitioning to our OWN app (Auth screen)
+                    if (packageName != "com.privix.privix") {
+                        Log.d(TAG, "User exited $previousPackage to $packageName. Revoking session.")
+                        UnlockManager.forgetApp(previousPackage)
+                        lockPrefs.removeAppUnlocked(previousPackage)
+                        
+                        // --- TRANSITION GUARD: Track that we just left this app ---
+                        lastExitedPackage = previousPackage
+                        lastExitedTime = System.currentTimeMillis()
+                    } else {
+                        Log.d(TAG, "Neutral transition from $previousPackage to $packageName (Auth Screen). Session preserved.")
+                    }
                 }
             }
             lastForegroundPackage = packageName
