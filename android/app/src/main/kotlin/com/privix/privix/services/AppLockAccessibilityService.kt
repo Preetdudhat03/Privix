@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.BroadcastReceiver
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import com.privix.privix.AuthActivity
@@ -18,32 +20,51 @@ import com.privix.privix.services.CurtainManager
  * UsageStatsManager requires polling and has latency. AccessibilityService gets real-time
  * TYPE_WINDOW_STATE_CHANGED events the instant a new window appears — this is the only
  * reliable non-root method for instant lock screen triggering.
- * 
- * HOW IT WORKS:
- * 1. Android fires onAccessibilityEvent when any window state changes
- * 2. We extract the package name from the event
- * 3. Compare against our locked apps list
- * 4. If locked → check if recently unlocked (relock timer) 
- * 5. If needs locking → start OverlayService to show lock screen
  */
 class AppLockAccessibilityService : AccessibilityService() {
 
     companion object {
         private const val TAG = "PrivixAccessibility"
         
-        // Debounce interval to prevent overlay flickering on rapid app switches
-        private const val DEBOUNCE_MS = 200L // Reduced for snappier feel
+        // Debounce interval to prevent rapid re-triggers
+        private const val DEBOUNCE_MS = 500L
+        
+        // Delay interval before checking the target package to ensure stability (prevents popup false positives)
+        private const val STABILITY_DELAY_MS = 150L
 
-        // System packages that should never be locked
-        private val SYSTEM_PACKAGES = setOf(
+        // System popups and overlays that should NEVER trigger a change or count as a transition.
+        // Extremely critical for Samsung One UI (Bluetooth overlays, Edge panels)
+        private val SYSTEM_OVERLAYS = setOf(
             "com.android.systemui",
+            "android",
+            "com.samsung.android.app.cocktailbarservice", // Edge Panel
+            "com.samsung.android.bixby.agent", // Bixby overlay
+            "com.samsung.android.smartclip", // Smart select screen overlay
+            "com.sec.android.app.sysscope", // System popup
+            "com.samsung.android.smartsuggestions",
+            "com.samsung.android.bluetoothtethering",
+            "com.android.settings.intelligence",
+            "com.samsung.android.app.routines",
+            "com.android.incallui" // Often an overlay when receiving calls
+        )
+        
+        // Launchers and core exit packages. Moving here means the user exited the app.
+        private val HOME_PACKAGES = setOf(
             "com.android.launcher",
             "com.android.launcher3",
             "com.google.android.apps.nexuslauncher",
+            "com.sec.android.app.launcher", // Samsung OneUI Launcher
+            "com.samsung.android.oneui.launcher",
+            "com.miui.home", // Xiaomi Launcher
+            "com.sec.android.app.easylauncher",
+            "com.huawei.android.launcher"
+        )
+
+        // Utility/Settings apps that we ignore for locking but treat as real app transitions.
+        private val IGNORED_SYSTEM_APPS = setOf(
             "com.android.settings",
             "com.android.packageinstaller",
-            "android",
-            "com.privix.privix"
+            "com.privix.privix" // Our own app
         )
         
         @Volatile
@@ -58,8 +79,8 @@ class AppLockAccessibilityService : AccessibilityService() {
     private var lastTriggeredPackage: String? = null
     private var lastTriggerTime: Long = 0
     
-    // Track if we are returning from a system window (like notifications)
-    private var returningFromSystemWindow = false
+    // Handler for debouncing rapid window events
+    private val debounceHandler = Handler(Looper.getMainLooper())
 
     private val screenOffReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -68,7 +89,7 @@ class AppLockAccessibilityService : AccessibilityService() {
                 lockPrefs.clearUnlockedApps()
                 UnlockManager.clear()
                 lastForegroundPackage = null
-                returningFromSystemWindow = false
+                debounceHandler.removeCallbacksAndMessages(null)
             }
         }
     }
@@ -93,101 +114,83 @@ class AppLockAccessibilityService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event == null) return
-        
-        val eventType = event.eventType
-        
-        // 1. Filter: we only care about window and content changes
-        if (eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && 
-            eventType != AccessibilityEvent.TYPE_WINDOWS_CHANGED &&
-            eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) return
+        // Optimize: We only care about explicit window state changes (app launches/popups).
+        // Ignoring TYPE_WINDOW_CONTENT_CHANGED & TYPE_WINDOWS_CHANGED drastically reduces noise.
+        if (event == null || event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
 
-        val eventPackage = event.packageName?.toString()
-        val topPackage = getTopPackageName()
+        val eventPackage = event.packageName?.toString() ?: return
         
-        // A. Resolve actual active package
-        var packageName = eventPackage
-        if (packageName == null || !lockedAppsCache.contains(packageName)) {
-            packageName = topPackage ?: eventPackage ?: return
+        // 1. FILTER OUT NOISE: Ignore all known overlays completely (e.g. Edge Panel, Bluetooth popup).
+        // They do not signify that the user navigated away from the application.
+        if (SYSTEM_OVERLAYS.contains(eventPackage)) {
+            Log.d(TAG, "Ignoring system overlay: $eventPackage")
+            return
         }
 
-        // B. SYNC locked apps cache promptly
+        // 2. DELAY & DEBOUNCE: Valid transition event detected. Wait briefly.
+        // This ensures the window state is stable before triggering a lock or revocation.
+        debounceHandler.removeCallbacksAndMessages(null)
+        val verificationRunnable = Runnable {
+            processStableAppSwitch(eventPackage)
+        }
+        debounceHandler.postDelayed(verificationRunnable, STABILITY_DELAY_MS)
+    }
+
+    private fun processStableAppSwitch(targetPackage: String) {
+        // Resolve actual active top package if available to be extra safe
+        val currentTopPackage = getTopPackageName()
+        
+        // If the *actual* top package is still a system overlay, abort. 
+        if (currentTopPackage != null && SYSTEM_OVERLAYS.contains(currentTopPackage)) {
+            Log.d(TAG, "Top package is still an overlay ($currentTopPackage), aborting.")
+            return
+        }
+        
+        // Prefer the actual application window if we found one, otherwise fallback to the event target.
+        val packageName = currentTopPackage ?: targetPackage
+
+        // SYNC locked apps cache promptly
         if (lockedAppsCache.isEmpty() || packageName == "com.privix.privix") {
             lockedAppsCache = lockPrefs.getLockedApps()
         }
 
         val previousPackage = lastForegroundPackage
 
-        // C. SERVICE PACKAGE HANDLING (Launcher, Settings, etc.)
-        if (isServicePackage(packageName)) {
-            // --- EXIT DETECTION ---
-            // If we are moving FROM a locked app TO a service screen, revoke unlock.
-            if (previousPackage != null && !isServicePackage(previousPackage)) {
+        // 3. HANDLE EXIT: Are we transitioning to the Home Screen or Settings?
+        val isHomeOrIgnored = HOME_PACKAGES.contains(packageName) || IGNORED_SYSTEM_APPS.contains(packageName)
+        
+        if (isHomeOrIgnored) {
+            // User exited a locked app and went back to Launcher or Settings
+            if (previousPackage != null && !HOME_PACKAGES.contains(previousPackage) && !IGNORED_SYSTEM_APPS.contains(previousPackage)) {
                 if (lockedAppsCache.contains(previousPackage)) {
                     Log.d(TAG, "User exited $previousPackage to $packageName. Revoking session.")
                     UnlockManager.forgetApp(previousPackage)
                     lockPrefs.removeAppUnlocked(previousPackage)
-                    // We DO NOT set lastForegroundPackage = null here anymore. 
-                    // We keep it so we can detect backgrounding events of the SAME app.
                 }
             }
-            
-            if (packageName != "com.privix.privix") {
-                returningFromSystemWindow = true
-                // settling on a system window now, can clear the tracker
-                lastForegroundPackage = packageName 
-            }
+            lastForegroundPackage = packageName
             return
         }
 
-        // Ignore our own activity logic
-        if (packageName == "com.privix.privix") return
-
-        // D. TRANSITION DIRECTION CHECK (Entry vs Exit)
-        // If the top window is the Launcher, but we see a locked app event:
-        if (topPackage != null && isServicePackage(topPackage)) {
-            if (packageName == previousPackage) {
-                // This is almost certainly an EXIT (app is backgrounding). Skip lock.
-                return
-            }
-        }
-
-        // E. NAVIGATION CHECKS
-        // 1. Same-app transition skip (unless session was revoked)
-        if (packageName == previousPackage && !returningFromSystemWindow) {
+        // 4. SKIP REDUNDANT: Prevent same-app lock loop
+        if (packageName == previousPackage) {
             return
         }
 
-        // 2. Returning from notifications panel etc.
-        if (returningFromSystemWindow && packageName == previousPackage) {
-            returningFromSystemWindow = false
-            return
-        }
-        
-        returningFromSystemWindow = false
-
-        // E. LOCK REQUIREMENT CHECKS
-        // 1. Check if the current app needs locking
+        // 5. REQUIREMENT CHECK: Does it need locking?
         val isLocked = lockedAppsCache.contains(packageName) || lockPrefs.isAppLocked(packageName)
-        if (!isLocked) return
+        if (!isLocked) {
+             lastForegroundPackage = packageName
+             return
+        }
 
-        // 2. Check if it's already unlocked in this session
+        // 6. SESSION CHECK: Check if it's already unlocked in this active session
         if (UnlockManager.isAppSessionUnlocked(packageName) || lockPrefs.isAppCurrentlyUnlocked(packageName)) {
             lastForegroundPackage = packageName
             return
         }
 
-        // F. PREDICTIVE & DIRECTIONAL FILTERING
-        // To prevent "Lock on Leave", only trigger predictive locks (when Launcher is on top) 
-        // if this is an actual Window State Change (a launch).
-        if (topPackage != null && isServicePackage(topPackage)) {
-            if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
-                // Ignore background redraws or content changes for exiting apps.
-                return
-            }
-        }
-
-        // G. DEBOUNCE & TRIGGER
+        // 7. FIRE LOCK: Check debounce to prevent multi-fires during the instant trigger
         val now = System.currentTimeMillis()
         if (packageName == lastTriggeredPackage && (now - lastTriggerTime) < DEBOUNCE_MS) {
             return
@@ -198,23 +201,8 @@ class AppLockAccessibilityService : AccessibilityService() {
         lastTriggerTime = now
 
         Log.d(TAG, "TRIGGERING LOCK for: $packageName")
-
-        // 1. Show curtain instantly (PREDICTIVE ZERO-FLICKER)
         CurtainManager.show(this)
-        
-        // 2. Launch Auth Activity
         showAuthScreen(packageName)
-    }
-
-    private fun isServicePackage(pkg: String?): Boolean {
-        if (pkg == null) return false
-        // Include launcher, settings, and our own app for immediate skipping
-        return pkg == "com.android.systemui" || 
-               pkg == "android" || 
-               pkg == "com.privix.privix" ||
-               pkg == "com.android.settings" ||
-               pkg == "com.android.packageinstaller" ||
-               pkg.contains("launcher", ignoreCase = true)
     }
 
     /**
@@ -255,6 +243,7 @@ class AppLockAccessibilityService : AccessibilityService() {
 
     override fun onDestroy() {
         isRunning = false
+        debounceHandler.removeCallbacksAndMessages(null)
         try {
             unregisterReceiver(screenOffReceiver)
         } catch (e: Exception) {
@@ -264,3 +253,4 @@ class AppLockAccessibilityService : AccessibilityService() {
         super.onDestroy()
     }
 }
+
