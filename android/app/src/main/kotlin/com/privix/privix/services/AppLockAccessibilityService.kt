@@ -45,7 +45,10 @@ class AppLockAccessibilityService : AccessibilityService() {
             "com.samsung.android.bluetoothtethering",
             "com.android.settings.intelligence",
             "com.samsung.android.app.routines",
-            "com.android.incallui" // Often an overlay when receiving calls
+            "com.android.incallui", // Often an overlay when receiving calls
+            "com.samsung.android.app.smartcapture", // Samsung Screenshot Toolbar
+            "com.samsung.android.smartcapture", // Older Samsung Capture UI
+            "com.samsung.android.app.screenrecorder" // Samsung Screen Recorder UI
         )
         
         // Launchers and core exit packages. Moving here means the user exited the app.
