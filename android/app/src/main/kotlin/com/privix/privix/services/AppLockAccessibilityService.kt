@@ -237,7 +237,6 @@ class AppLockAccessibilityService : AccessibilityService() {
         }
 
         // 7. FIRE LOCK: Check debounce to prevent multi-fires during the instant trigger
-        val now = System.currentTimeMillis()
         if (packageName == lastTriggeredPackage && (now - lastTriggerTime) < DEBOUNCE_MS) {
             return
         }
