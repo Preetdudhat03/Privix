@@ -3,7 +3,7 @@
     <style name="Theme.TransparentAuth" parent="Theme.AppCompat.DayNight.NoActionBar">
         <!-- Make the window opaque so the underlying app's content is completely hidden -->
         <item name="android:windowIsTranslucent">false</item>
-        <item name="android:windowBackground">#0D0D1A</item> <!-- Privix dark background -->
+        <item name="android:windowBackground">#000000</item> <!-- One UI 7 AMOLED Black -->
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowContentOverlay">@null</item>
         <item name="android:windowAnimationStyle">@null</item>

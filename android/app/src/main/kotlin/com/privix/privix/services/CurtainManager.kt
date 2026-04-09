@@ -26,7 +26,7 @@ object CurtainManager {
         try {
             windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
             curtainView = View(context).apply {
-                setBackgroundColor(0xFF0D0D1A.toInt()) // Privix dark background
+                setBackgroundColor(0xFF000000.toInt()) // One UI 7 AMOLED Black
                 visibility = View.GONE
             }
 
