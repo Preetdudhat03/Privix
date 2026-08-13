@@ -146,8 +146,19 @@ class AppLockAccessibilityService : AccessibilityService() {
             return
         }
 
-        // 2. DELAY & DEBOUNCE: Valid transition event detected. Wait briefly.
-        // This ensures the window state is stable before triggering a lock or revocation.
+        // 2. ZERO-LATENCY OVERLAY: If target is locked & not session-unlocked, trigger curtain immediately (0ms)
+        // so no app content is ever revealed to the user while waiting for stability check.
+        if (lockedAppsCache.isEmpty()) {
+            lockedAppsCache = lockPrefs.getLockedApps()
+        }
+        if (lockedAppsCache.contains(eventPackage) &&
+            !UnlockManager.isAppSessionUnlocked(eventPackage) &&
+            !lockPrefs.isAppCurrentlyUnlocked(eventPackage) &&
+            eventPackage != "com.privix.privix") {
+            CurtainManager.show(this)
+        }
+
+        // 3. DELAY & DEBOUNCE: Process stable app switch to verify window state.
         debounceHandler.removeCallbacksAndMessages(null)
         val verificationRunnable = Runnable {
             processStableAppSwitch(eventPackage)

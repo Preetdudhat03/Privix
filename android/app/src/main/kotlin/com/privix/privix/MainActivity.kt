@@ -238,10 +238,10 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     /**
-     * Resize icon to 120x120 and convert to ByteArray.
+     * Resize icon to 100x100 and convert to ByteArray with optimized compression.
      */
     private fun drawableToByteArray(drawable: Drawable): ByteArray {
-        val targetSize = 120
+        val targetSize = 100
         val bitmap = when (drawable) {
             is BitmapDrawable -> {
                 if (drawable.bitmap.width <= targetSize && drawable.bitmap.height <= targetSize) {
@@ -260,7 +260,11 @@ class MainActivity : FlutterFragmentActivity() {
         }
 
         val stream = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.PNG, 80, stream)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            bitmap.compress(Bitmap.CompressFormat.WEBP_LOSSY, 85, stream)
+        } else {
+            bitmap.compress(Bitmap.CompressFormat.PNG, 85, stream)
+        }
         return stream.toByteArray()
     }
 

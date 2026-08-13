@@ -15,7 +15,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _accessibilityEnabled = false;
   bool _overlayEnabled = false;
   bool _batteryOptimized = false;
-  bool _serviceRunning = false;
   int _lockedAppCount = 0;
   bool _isLoading = true;
 
@@ -32,7 +31,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.dispose();
   }
 
-  // Refresh status when user returns from settings
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
@@ -46,7 +44,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         PlatformChannelService.checkAccessibilityPermission(),
         PlatformChannelService.checkOverlayPermission(),
         PlatformChannelService.checkBatteryOptimization(),
-        PlatformChannelService.isServiceRunning(),
         StorageService.getLockedApps(),
       ]);
 
@@ -55,18 +52,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           _accessibilityEnabled = results[0] as bool;
           _overlayEnabled = results[1] as bool;
           _batteryOptimized = results[2] as bool;
-          _serviceRunning = results[3] as bool;
-          _lockedAppCount = (results[4] as List).length;
+          _lockedAppCount = (results[3] as List).length;
           _isLoading = false;
         });
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
   bool get _isProtectionActive =>
       _accessibilityEnabled && _overlayEnabled && _lockedAppCount > 0;
+
+  int get _securityScore {
+    int score = 0;
+    if (_accessibilityEnabled) score += 40;
+    if (_overlayEnabled) score += 40;
+    if (_batteryOptimized) score += 10;
+    if (_lockedAppCount > 0) score += 10;
+    return score;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -85,10 +90,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 parent: BouncingScrollPhysics(),
               ),
               slivers: [
-                // App bar with One UI Large Title
+                // Header
                 SliverAppBar(
                   backgroundColor: theme.scaffoldBackgroundColor,
-                  expandedHeight: 200,
+                  expandedHeight: 190,
                   collapsedHeight: 80,
                   floating: false,
                   pinned: true,
@@ -112,9 +117,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             right: -20,
                             top: 40,
                             child: Icon(
-                              Icons.shield,
+                              Icons.shield_rounded,
                               size: 180,
-                              color: const Color(0xFF007AFF).withOpacity(0.05),
+                              color: const Color(0xFF007AFF).withValues(alpha: 0.05),
                             ),
                           ),
                         ],
@@ -125,7 +130,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: IconButton(
-                        icon: Icon(Icons.settings_outlined, color: colorScheme.onSurface.withOpacity(0.7)),
+                        icon: Icon(
+                          Icons.settings_outlined,
+                          color: colorScheme.onSurface.withValues(alpha: 0.7),
+                        ),
                         onPressed: () => Navigator.pushNamed(context, '/settings')
                           .then((_) => _loadStatus()),
                       ),
@@ -139,13 +147,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Status Focus block
+                        // Status Card
                         _buildStatusCard(),
                         const SizedBox(height: 24),
 
-                        /*
-                        // Section Headers and Cards
-                        _buildSectionTitle('Permissions'),
+                        // System Safeguards
+                        _buildSectionTitle('System Safeguards'),
                         const SizedBox(height: 12),
                         Container(
                           decoration: BoxDecoration(
@@ -154,26 +161,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           ),
                           child: Column(
                             children: [
-                              _buildPermissionCard(
-                                icon: Icons.accessibility_new,
+                              _buildPermissionTile(
+                                icon: Icons.accessibility_new_rounded,
                                 title: 'Accessibility Service',
-                                subtitle: 'Detect foreground apps',
+                                subtitle: 'Instant app detection engine',
                                 isEnabled: _accessibilityEnabled,
                                 showDivider: true,
                                 onTap: () => PlatformChannelService.openAccessibilitySettings(),
                               ),
-                              _buildPermissionCard(
-                                icon: Icons.layers,
+                              _buildPermissionTile(
+                                icon: Icons.layers_rounded,
                                 title: 'Draw Over Apps',
-                                subtitle: 'Show lock screen overlay',
+                                subtitle: 'Lock screen overlay display',
                                 isEnabled: _overlayEnabled,
                                 showDivider: true,
                                 onTap: () => PlatformChannelService.openOverlaySettings(),
                               ),
-                              _buildPermissionCard(
-                                icon: Icons.battery_saver,
+                              _buildPermissionTile(
+                                icon: Icons.battery_saver_rounded,
                                 title: 'Battery Optimization',
-                                subtitle: 'Keep service alive',
+                                subtitle: 'Background persistence',
                                 isEnabled: _batteryOptimized,
                                 showDivider: false,
                                 onTap: () => PlatformChannelService.openBatteryOptimizationSettings(),
@@ -182,8 +189,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           ),
                         ),
                         const SizedBox(height: 24),
-                        */
 
+                        // Quick Actions
                         _buildSectionTitle('Quick Actions'),
                         const SizedBox(height: 12),
                         Container(
@@ -203,10 +210,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                   .then((_) => _loadStatus()),
                               ),
                               _buildActionCard(
-                                icon: Icons.pin,
+                                icon: Icons.tune_rounded,
                                 title: 'Settings',
-                                subtitle: 'Behavior & PIN settings',
-                                color: Colors.grey[400]!,
+                                subtitle: 'Relock timeout & behavior',
+                                color: colorScheme.onSurface.withValues(alpha: 0.5),
                                 showDivider: false,
                                 onTap: () => Navigator.pushNamed(context, '/settings'),
                               ),
@@ -228,48 +235,90 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final colorScheme = theme.colorScheme;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(32),
+      padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(32),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: _isProtectionActive
-                ? const Color(0xFF007AFF).withOpacity(0.1)
-                : const Color(0xFFFF453A).withOpacity(0.1),
-            ),
-            child: Icon(
-              _isProtectionActive ? Icons.shield_rounded : Icons.shield_outlined,
-              color: _isProtectionActive
-                ? const Color(0xFF007AFF)
-                : const Color(0xFFFF453A),
-              size: 56,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _isProtectionActive
+                    ? const Color(0xFF007AFF).withValues(alpha: 0.12)
+                    : const Color(0xFFFF453A).withValues(alpha: 0.12),
+                ),
+                child: Icon(
+                  _isProtectionActive ? Icons.shield_rounded : Icons.shield_outlined,
+                  color: _isProtectionActive ? const Color(0xFF007AFF) : const Color(0xFFFF453A),
+                  size: 44,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: _isProtectionActive
+                      ? const Color(0xFF007AFF).withValues(alpha: 0.1)
+                      : colorScheme.error.withValues(alpha: 0.1),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _isProtectionActive ? Icons.check_circle_rounded : Icons.error_outline_rounded,
+                      size: 14,
+                      color: _isProtectionActive ? const Color(0xFF007AFF) : colorScheme.error,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Score: $_securityScore%',
+                      style: TextStyle(
+                        color: _isProtectionActive ? const Color(0xFF007AFF) : colorScheme.error,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 20),
-          Text(
-            _isProtectionActive ? 'Protection Active' : 'Not Fully Protected',
-            style: TextStyle(
-              color: colorScheme.onSurface,
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              fontFamily: 'Inter',
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              _isProtectionActive ? 'Protection Active' : 'Action Required',
+              style: TextStyle(
+                color: colorScheme.onSurface,
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'Inter',
+              ),
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            _isProtectionActive
-              ? '$_lockedAppCount app${_lockedAppCount == 1 ? '' : 's'} are currently secured'
-              : _getInactiveReason(),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: colorScheme.onSurface.withOpacity(0.5),
-              fontSize: 14,
+          const SizedBox(height: 6),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              _isProtectionActive
+                ? '$_lockedAppCount app${_lockedAppCount == 1 ? '' : 's'} protected with zero-latency lock'
+                : _getInactiveReason(),
+              style: TextStyle(
+                color: colorScheme.onSurface.withValues(alpha: 0.5),
+                fontSize: 14,
+              ),
             ),
           ),
         ],
@@ -287,11 +336,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget _buildSectionTitle(String title) {
     final colorScheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.only(left: 12, bottom: 8),
+      padding: const EdgeInsets.only(left: 12, bottom: 4),
       child: Text(
         title,
         style: TextStyle(
-          color: colorScheme.onSurface.withOpacity(0.7),
+          color: colorScheme.onSurface.withValues(alpha: 0.5),
           fontSize: 13,
           fontWeight: FontWeight.w600,
         ),
@@ -299,7 +348,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildPermissionCard({
+  Widget _buildPermissionTile({
     required IconData icon,
     required String title,
     required String subtitle,
@@ -323,12 +372,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: isEnabled
-                      ? const Color(0xFF007AFF).withOpacity(0.12)
-                      : colorScheme.onSurface.withOpacity(0.05),
+                      ? const Color(0xFF007AFF).withValues(alpha: 0.12)
+                      : colorScheme.onSurface.withValues(alpha: 0.05),
                   ),
                   child: Icon(
                     icon,
-                    color: isEnabled ? const Color(0xFF007AFF) : colorScheme.onSurface.withOpacity(0.38),
+                    color: isEnabled ? const Color(0xFF007AFF) : colorScheme.onSurface.withValues(alpha: 0.38),
                     size: 22,
                   ),
                 ),
@@ -349,7 +398,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       Text(
                         subtitle,
                         style: TextStyle(
-                          color: colorScheme.onSurface.withOpacity(0.4),
+                          color: colorScheme.onSurface.withValues(alpha: 0.4),
                           fontSize: 12,
                         ),
                       ),
@@ -358,8 +407,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 ),
                 Icon(
                   isEnabled ? Icons.check_circle_rounded : Icons.arrow_forward_ios_rounded,
-                  color: isEnabled ? const Color(0xFF007AFF) : colorScheme.onSurface.withOpacity(0.24),
-                  size: isEnabled ? 24 : 14,
+                  color: isEnabled ? const Color(0xFF007AFF) : colorScheme.onSurface.withValues(alpha: 0.24),
+                  size: isEnabled ? 22 : 14,
                 ),
               ],
             ),
@@ -370,7 +419,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             padding: const EdgeInsets.only(left: 80, right: 20),
             child: Divider(
               height: 1,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.05),
+              color: colorScheme.onSurface.withValues(alpha: 0.05),
             ),
           ),
       ],
@@ -400,7 +449,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   height: 44,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: color.withOpacity(0.12),
+                    color: color.withValues(alpha: 0.12),
                   ),
                   child: Icon(icon, color: color, size: 22),
                 ),
@@ -421,14 +470,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       Text(
                         subtitle,
                         style: TextStyle(
-                          color: colorScheme.onSurface.withOpacity(0.4),
+                          color: colorScheme.onSurface.withValues(alpha: 0.4),
                           fontSize: 12,
                         ),
                       ),
                     ],
                   ),
                 ),
-                Icon(Icons.arrow_forward_ios_rounded, color: colorScheme.onSurface.withOpacity(0.24), size: 14),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  color: colorScheme.onSurface.withValues(alpha: 0.24),
+                  size: 14,
+                ),
               ],
             ),
           ),
@@ -438,7 +491,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             padding: const EdgeInsets.only(left: 80, right: 20),
             child: Divider(
               height: 1,
-              color: colorScheme.onSurface.withOpacity(0.05),
+              color: colorScheme.onSurface.withValues(alpha: 0.05),
             ),
           ),
       ],
