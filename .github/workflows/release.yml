@@ -2,8 +2,6 @@ name: Build & Publish Release
 
 on:
   push:
-    branches:
-      - main
     tags:
       - 'v*'
   workflow_dispatch:
@@ -48,9 +46,6 @@ jobs:
         id: prepare_apk
         run: |
           REF_NAME="${GITHUB_REF_NAME:-v2.0.0}"
-          if [[ "$REF_NAME" == "main" ]]; then
-            REF_NAME="v2.0.0"
-          fi
           APK_NAME="Privix-${REF_NAME}.apk"
           cp build/app/outputs/flutter-apk/app-release.apk "build/app/outputs/flutter-apk/${APK_NAME}"
           echo "apk_name=${APK_NAME}" >> $GITHUB_OUTPUT
@@ -75,6 +70,7 @@ jobs:
             ### ✨ Features in this Build:
             - **Zero-Latency App Lock**: Instant 0ms AMOLED black curtain overlay protection.
             - **Samsung One UI Edge Panel Fix**: State machine window classification to prevent re-lock loops.
+            - **Security Hardening**: Persistent lock overlay during Notification Panel & Quick Settings interruptions.
             - **Smart Category Presets**: 1-tap sensitive app locking & category filters.
             - **Butter-Smooth Performance**: Native Kotlin icon scaling & LRU memory caching.
             - **Flexible Auth**: System Biometrics (Fingerprint/Face) + PIN keypad.
