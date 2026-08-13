@@ -119,7 +119,6 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
             return !app.packageName.startsWith('com.android.') &&
                    !app.packageName.startsWith('com.google.android.');
           case AppFilterCategory.all:
-          default:
             return true;
         }
       }).toList();
