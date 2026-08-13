@@ -89,30 +89,30 @@ class LockPreferences(context: Context) {
         return prefs.getLong(KEY_RELOCK_TIMEOUT, RELOCK_IMMEDIATELY)
     }
 
-    // --- Recently Unlocked Apps (with timestamps) ---
+    // --- Recently Unlocked Apps ---
 
     fun markAppUnlocked(packageName: String) {
-        prefs.edit().putLong("unlocked_$packageName", System.currentTimeMillis()).commit()
+        prefs.edit().putLong("unlocked_$packageName", System.currentTimeMillis()).apply()
+        LockSessionManager.onAppUnlocked(packageName)
     }
 
     fun isAppCurrentlyUnlocked(packageName: String): Boolean {
-        var timeout = getRelockTimeout()
-        if (timeout == RELOCK_IMMEDIATELY) {
-            // Give a 2.5 second grace period so the underlying app can regain focus 
-            // after the BioPrompt completes without instantly triggering another lock
-            timeout = 2500L
+        if (LockSessionManager.isAppUnlocked(packageName)) {
+            return true
         }
+
+        val timeout = getRelockTimeout()
+        if (timeout == RELOCK_ALWAYS_UNLOCKED) return true
 
         val timestamp = prefs.getLong("unlocked_$packageName", 0L)
         if (timestamp == 0L) return false
-
-        if (timeout == RELOCK_ALWAYS_UNLOCKED) return true
 
         return (System.currentTimeMillis() - timestamp) < timeout
     }
 
     fun removeAppUnlocked(packageName: String) {
-        prefs.edit().remove("unlocked_$packageName").commit()
+        prefs.edit().remove("unlocked_$packageName").apply()
+        LockSessionManager.invalidateSession("Manual removal")
     }
 
     fun clearUnlockedApps() {
@@ -122,6 +122,7 @@ class LockPreferences(context: Context) {
                 editor.remove(key)
             }
         }
-        editor.commit()
+        editor.apply()
+        LockSessionManager.clearAll()
     }
 }
