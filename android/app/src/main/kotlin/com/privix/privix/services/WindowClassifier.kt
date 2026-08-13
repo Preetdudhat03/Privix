@@ -1,11 +1,5 @@
 package com.privix.privix.services
 
-import android.content.Context
-import android.content.Intent
-import android.content.contentvalues.ContentValues.TAG
-import android.content.pm.PackageManager
-import android.util.Log
-import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityWindowInfo
 
 /**
@@ -66,12 +60,14 @@ object WindowClassifier {
 
         // 2. WindowInfo type inspection
         if (windowInfo != null) {
-            when (windowInfo.type) {
-                AccessibilityWindowInfo.TYPE_SYSTEM_OVERLAY,
-                AccessibilityWindowInfo.TYPE_INPUT_METHOD,
-                AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY,
-                AccessibilityWindowInfo.TYPE_SPLIT_SCREEN_DIVIDER -> {
-                    return WindowCategory.SYSTEM_UI
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                when (windowInfo.type) {
+                    AccessibilityWindowInfo.TYPE_SYSTEM,
+                    AccessibilityWindowInfo.TYPE_INPUT_METHOD,
+                    AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY,
+                    AccessibilityWindowInfo.TYPE_SPLIT_SCREEN_DIVIDER -> {
+                        return WindowCategory.SYSTEM_UI
+                    }
                 }
             }
         }
