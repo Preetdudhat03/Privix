@@ -16,6 +16,9 @@ object CurtainManager {
     private var windowManager: WindowManager? = null
     private var layoutParams: WindowManager.LayoutParams? = null
 
+    val isVisible: Boolean
+        get() = curtainView?.visibility == View.VISIBLE
+
     /**
      * Pre-initializes the curtain view to ensure zero-latency when needed.
      * The window is added ONCE and kept persistent.
@@ -28,7 +31,6 @@ object CurtainManager {
             curtainView = View(context).apply {
                 setBackgroundColor(0xFF000000.toInt()) // One UI 7 AMOLED Black
                 visibility = View.GONE
-                // Stability Fixes: prevent the curtain from stealing focus or being read by accessibility
                 importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
                 isFocusable = false
                 isClickable = false
@@ -46,7 +48,6 @@ object CurtainManager {
                 PixelFormat.TRANSLUCENT
             ).apply {
                 gravity = Gravity.CENTER
-                // Ensure no layout insets interfere with the covering
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
                     layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
                 }
