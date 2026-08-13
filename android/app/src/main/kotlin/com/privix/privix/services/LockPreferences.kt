@@ -93,7 +93,7 @@ class LockPreferences(context: Context) {
 
     fun markAppUnlocked(packageName: String) {
         prefs.edit().putLong("unlocked_$packageName", System.currentTimeMillis()).apply()
-        LockSessionManager.onAppUnlocked(packageName)
+        LockSessionManager.onAuthenticationSuccess(packageName)
     }
 
     fun isAppCurrentlyUnlocked(packageName: String): Boolean {
