@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.BroadcastReceiver
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -86,7 +87,13 @@ class AppLockAccessibilityService : AccessibilityService() {
 
         val eventPackage = event.packageName?.toString() ?: return
         val className = event.className?.toString() ?: "Unknown"
-        val windowInfo = event.window
+        
+        val windowInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            event.source?.window
+        } else {
+            null
+        }
+
         val category = WindowClassifier.classify(eventPackage, windowInfo)
         val authenticatedApp = LockSessionManager.getAuthenticatedPackage()
 
@@ -233,7 +240,7 @@ class AppLockAccessibilityService : AccessibilityService() {
     }
 
     private fun getTopPackageName(): String? {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             val windowList = windows
             if (!windowList.isNullOrEmpty()) {
                 for (i in windowList.size - 1 downTo 0) {
@@ -258,7 +265,7 @@ class AppLockAccessibilityService : AccessibilityService() {
     }
     
     private fun isPackageTrulyFocused(pkgToCheck: String): Boolean {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             val windowList = windows
             if (!windowList.isNullOrEmpty()) {
                 for (i in windowList.size - 1 downTo 0) {
@@ -292,7 +299,8 @@ class AppLockAccessibilityService : AccessibilityService() {
         debounceHandler.removeCallbacksAndMessages(null)
         try {
             unregisterReceiver(screenOffReceiver)
-        } catch (_) {
+        } catch (e: Exception) {
+            // Unregistered
         }
         Log.d(TAG, "[Privix-A11Y] Service destroyed")
         super.onDestroy()
