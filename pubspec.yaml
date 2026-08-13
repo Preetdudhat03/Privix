@@ -1,7 +1,7 @@
 name: privix
 description: "Offline App Lock - Lock any app with PIN or biometrics"
 publish_to: 'none'
-version: 2.0.0+2
+version: 2.0.1+3
 
 environment:
   sdk: ^3.11.3
