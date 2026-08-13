@@ -10,7 +10,7 @@ object UnlockManager {
 
     @Synchronized
     fun markUnlocked(packageName: String) {
-        LockSessionManager.onAppUnlocked(packageName)
+        LockSessionManager.onAuthenticationSuccess(packageName)
     }
 
     @Synchronized
