@@ -1,8 +1,25 @@
 # Privix — Offline App Lock 🛡️
 
+[![Latest Release](https://img.shields.io/github/v/release/Preetdudhat03/Privix?color=007AFF&label=Latest%20Release)](https://github.com/Preetdudhat03/Privix/releases/tag/v2.0.0)
+[![Platform](https://img.shields.io/badge/Platform-Android%207.0%2B-brightgreen)](https://developer.android.com)
+[![Flutter](https://img.shields.io/badge/Flutter-v3.27%2B-blue)](https://flutter.dev)
+[![License](https://img.shields.io/badge/License-MIT%20%2F%20Personal-orange)](LICENSE)
+
 **Privix** is a high-performance, offline Android app locking application built with **Flutter** and **Kotlin**. It provides real-time, zero-latency protection for sensitive applications using biometric authentication (fingerprint/face unlock) or a PIN.
 
 Designed with **One UI 7** aesthetics, Privix ensures your personal data, messaging apps, photos, and financial tools remain completely private without collecting any user telemetry or requiring internet access.
+
+---
+
+## 📥 Latest Release (v2.0.0)
+
+🚀 **[Download Latest APK — Privix v2.0.0](https://github.com/Preetdudhat03/Privix/releases/tag/v2.0.0)**
+
+### Release Highlights:
+- ⚡ **Zero-Latency App Lock Protection (0ms Overlay)**: Instant AMOLED black screen curtain to prevent content preview leaks before authentication.
+- 🔒 **1-Tap Sensitive App Locking**: Pre-configured preset to lock social media, financial, gallery, and messaging apps (*WhatsApp, Instagram, Photos, Paytm, Google Pay, Telegram*).
+- 🚀 **Butter-Smooth Performance**: Native Kotlin icon scaling + Flutter LRU memory icon cache for stutter-free 60/120 FPS list scrolling.
+- 🔑 **Enhanced Pin & Biometric Keypad**: Animated keypad indicators, haptic feedback, and error shake effects.
 
 ---
 
