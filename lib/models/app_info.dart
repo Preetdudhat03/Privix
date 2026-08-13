@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:typed_data';
 
 /// Represents an installed app on the device.
