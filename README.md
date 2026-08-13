@@ -1,6 +1,7 @@
 # Privix — Offline App Lock 🛡️
 
 [![Latest Release](https://img.shields.io/github/v/release/Preetdudhat03/Privix?color=007AFF&label=Latest%20Release)](https://github.com/Preetdudhat03/Privix/releases/tag/v2.0.0)
+[![Build & Publish Release](https://github.com/Preetdudhat03/Privix/actions/workflows/release.yml/badge.svg)](https://github.com/Preetdudhat03/Privix/actions/workflows/release.yml)
 [![Platform](https://img.shields.io/badge/Platform-Android%207.0%2B-brightgreen)](https://developer.android.com)
 [![Flutter](https://img.shields.io/badge/Flutter-v3.27%2B-blue)](https://flutter.dev)
 [![License](https://img.shields.io/badge/License-MIT%20%2F%20Personal-orange)](LICENSE)
