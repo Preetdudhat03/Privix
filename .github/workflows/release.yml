@@ -44,29 +44,44 @@ jobs:
       - name: 🛠️ Build Release APK
         run: flutter build apk --release
 
-      - name: 🏷️ Rename APK for Release
+      - name: 🏷️ Prepare APK Artifacts
+        id: prepare_apk
         run: |
-          TAG_NAME="${GITHUB_REF_NAME:-latest}"
-          mv build/app/outputs/flutter-apk/app-release.apk "build/app/outputs/flutter-apk/Privix-${TAG_NAME}.apk"
+          REF_NAME="${GITHUB_REF_NAME:-v2.0.0}"
+          if [[ "$REF_NAME" == "main" ]]; then
+            REF_NAME="v2.0.0"
+          fi
+          APK_NAME="Privix-${REF_NAME}.apk"
+          cp build/app/outputs/flutter-apk/app-release.apk "build/app/outputs/flutter-apk/${APK_NAME}"
+          echo "apk_name=${APK_NAME}" >> $GITHUB_OUTPUT
+          echo "target_tag=${REF_NAME}" >> $GITHUB_OUTPUT
 
-      - name: 🚀 Create GitHub Release & Upload APK
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: 📤 Upload Build Artifact to GitHub Actions
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.prepare_apk.outputs.apk_name }}
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+
+      - name: 🚀 Publish APK to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.prepare_apk.outputs.target_tag }}
           files: build/app/outputs/flutter-apk/Privix-*.apk
-          name: Privix Release ${{ github.ref_name }}
+          name: Privix Release ${{ steps.prepare_apk.outputs.target_tag }}
           body: |
-            ## Privix App Release ${{ github.ref_name }} 🛡️
+            ## Privix App Release ${{ steps.prepare_apk.outputs.target_tag }} 🛡️
 
             ### ✨ Features in this Build:
             - **Zero-Latency App Lock**: Instant 0ms AMOLED black curtain overlay protection.
+            - **Samsung One UI Edge Panel Fix**: State machine window classification to prevent re-lock loops.
             - **Smart Category Presets**: 1-tap sensitive app locking & category filters.
             - **Butter-Smooth Performance**: Native Kotlin icon scaling & LRU memory caching.
             - **Flexible Auth**: System Biometrics (Fingerprint/Face) + PIN keypad.
 
             ---
             ### 📥 Installation:
-            1. Download `Privix-${{ github.ref_name }}.apk` below.
+            1. Download `Privix-${{ steps.prepare_apk.outputs.target_tag }}.apk` below under **Assets**.
             2. Install on Android 7.0+ (API 24+).
             3. Grant **Accessibility Service** and **Draw Over Apps** permissions when prompted.
           draft: false
