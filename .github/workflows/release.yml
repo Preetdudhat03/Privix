@@ -1,86 +1,50 @@
-name: Build & Publish Release
+name: Release
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
-
-permissions:
-  contents: write
+  push:
+    branches:
+      - main
+    paths:
+      - 'pubspec.yaml'
 
 jobs:
-  build-and-release:
-    name: Build APK & Publish Release
+  release:
+    name: Create GitHub Release
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: write
+    
     steps:
-      - name: 📥 Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: ☕ Set up Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'zulu'
-          java-version: '17'
-          cache: 'gradle'
-
-      - name: 🐦 Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-          cache: true
-
-      - name: 📦 Install Dependencies
-        run: flutter pub get
-
-      - name: 🔍 Run Code Analysis
-        run: flutter analyze
-
-      - name: 🛠️ Build Release APK
-        run: flutter build apk --release
-
-      - name: 🏷️ Prepare APK Artifacts
-        id: prepare_apk
+      - name: Extract version from pubspec.yaml
+        id: get_version
         run: |
-          REF_NAME="${GITHUB_REF_NAME:-v2.0.0}"
-          APK_NAME="Privix-${REF_NAME}.apk"
-          cp build/app/outputs/flutter-apk/app-release.apk "build/app/outputs/flutter-apk/${APK_NAME}"
-          echo "apk_name=${APK_NAME}" >> $GITHUB_OUTPUT
-          echo "target_tag=${REF_NAME}" >> $GITHUB_OUTPUT
+          # Grabs the version string from pubspec.yaml
+          VERSION=$(grep '^version: ' pubspec.yaml | awk '{print $2}' | tr -d '\r')
+          echo "APP_VERSION=v$VERSION" >> $GITHUB_ENV
+          echo "Extracted version: v$VERSION"
 
-      - name: 📤 Upload Build Artifact to GitHub Actions
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.prepare_apk.outputs.apk_name }}
-          path: build/app/outputs/flutter-apk/app-release.apk
-          if-no-files-found: error
+      - name: Check if tag already exists
+        id: check_tag
+        run: |
+          if git ls-remote --tags origin | grep -q "refs/tags/${{ env.APP_VERSION }}$"; then
+            echo "Tag ${{ env.APP_VERSION }} already exists. Skipping release."
+            echo "exists=true" >> $GITHUB_ENV
+          else
+            echo "Tag ${{ env.APP_VERSION }} does not exist. Creating release."
+            echo "exists=false" >> $GITHUB_ENV
+          fi
 
-      - name: 🚀 Publish APK to GitHub Release
+      - name: Create Release
+        if: env.exists == 'false'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.prepare_apk.outputs.target_tag }}
-          files: build/app/outputs/flutter-apk/Privix-*.apk
-          name: Privix Release ${{ steps.prepare_apk.outputs.target_tag }}
-          body: |
-            ## Privix App Release ${{ steps.prepare_apk.outputs.target_tag }} 🛡️
-
-            ### ✨ Features in this Build:
-            - **Zero-Latency App Lock**: Instant 0ms AMOLED black curtain overlay protection.
-            - **Samsung One UI Edge Panel Fix**: State machine window classification to prevent re-lock loops.
-            - **Security Hardening**: Persistent lock overlay during Notification Panel & Quick Settings interruptions.
-            - **Smart Category Presets**: 1-tap sensitive app locking & category filters.
-            - **Butter-Smooth Performance**: Native Kotlin icon scaling & LRU memory caching.
-            - **Flexible Auth**: System Biometrics (Fingerprint/Face) + PIN keypad.
-
-            ---
-            ### 📥 Installation:
-            1. Download `Privix-${{ steps.prepare_apk.outputs.target_tag }}.apk` below under **Assets**.
-            2. Install on Android 7.0+ (API 24+).
-            3. Grant **Accessibility Service** and **Draw Over Apps** permissions when prompted.
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ env.APP_VERSION }}
+          name: Release ${{ env.APP_VERSION }}
+          target_commitish: ${{ github.sha }}
+          generate_release_notes: true
