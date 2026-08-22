@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/storage_service.dart';
 import '../services/platform_channel_service.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 /// Settings screen for configuring relock behavior and permissions.
 class SettingsScreen extends StatefulWidget {
@@ -12,6 +13,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   int _relockTimeout = 0;
+  String _appVersion = '1.0.0';
   bool _isLoading = true;
 
   static const _relockOptions = [
@@ -32,9 +34,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadSettings() async {
     final relockTimeout = await StorageService.getRelockTimeout();
 
+    String version = '1.0.0';
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      version = packageInfo.version;
+    } catch (e) {
+      // Ignore and use default
+    }
+
     if (mounted) {
       setState(() {
         _relockTimeout = relockTimeout;
+        _appVersion = version;
         _isLoading = false;
       });
     }
@@ -244,7 +255,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                       // About
                       Text(
-                        'Privix App Lock v1.1.0',
+                        'Privix App Lock v$_appVersion',
                         style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.25), fontSize: 13),
                       ),
                       const SizedBox(height: 4),
