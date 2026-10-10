@@ -82,6 +82,21 @@ class StorageService {
     return prefs.getInt('relock_timeout') ?? 0; // Default: immediately
   }
 
+  // ─── Engine Mode ─────────────────────────────────────
+
+  static Future<String> getEngineMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    final local = prefs.getString('engine_mode');
+    if (local != null) return local;
+    return await PlatformChannelService.getEngineMode();
+  }
+
+  static Future<void> setEngineMode(String mode) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('engine_mode', mode);
+    await PlatformChannelService.setEngineMode(mode);
+  }
+
   // ─── App List Caching ────────────────────────────────
 
   /// Get cached app list from local storage.
