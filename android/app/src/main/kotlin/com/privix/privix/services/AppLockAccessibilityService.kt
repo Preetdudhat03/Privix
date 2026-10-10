@@ -38,6 +38,10 @@ class AppLockAccessibilityService : AccessibilityService() {
             
         var lastForegroundPackage: String? = null
         private var lockedAppsCache: Set<String> = emptySet()
+
+        fun refreshLockedApps(apps: Set<String>) {
+            lockedAppsCache = apps
+        }
     }
 
     private lateinit var lockPrefs: LockPreferences
