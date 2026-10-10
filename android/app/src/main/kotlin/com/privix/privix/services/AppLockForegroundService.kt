@@ -224,10 +224,9 @@ class AppLockForegroundService : Service() {
                     this,
                     0,
                     authIntent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-                    options.toBundle()
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
-                pi.send()
+                pi.send(this, 0, null, null, null, null, options.toBundle())
             } else {
                 startActivity(authIntent)
             }
