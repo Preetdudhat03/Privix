@@ -852,13 +852,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const SizedBox(height: 14),
-          Text(
-            'Privix v$_appVersion • Samsung One UI 9 Edition',
-            style: TextStyle(
-              color: colorScheme.onSurface.withValues(alpha: 0.4),
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-            ),
+          Row(
+            children: [
+              Image.asset('assets/logo.png', width: 18, height: 18),
+              const SizedBox(width: 8),
+              Text(
+                'Privix v$_appVersion • Samsung One UI 9 Edition',
+                style: TextStyle(
+                  color: colorScheme.onSurface.withValues(alpha: 0.4),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
         ],
       ),
