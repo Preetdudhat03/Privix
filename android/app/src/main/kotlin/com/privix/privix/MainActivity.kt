@@ -347,6 +347,17 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
+    private fun isUsageStatsPermissionGranted(): Boolean {
+        val appOps = getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+        val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            appOps.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), packageName)
+        } else {
+            @Suppress("DEPRECATION")
+            appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), packageName)
+        }
+        return mode == AppOpsManager.MODE_ALLOWED
+    }
+
     private fun hashPin(pin: String): String {
         val digest = MessageDigest.getInstance("SHA-256")
         val hashBytes = digest.digest(pin.toByteArray())
