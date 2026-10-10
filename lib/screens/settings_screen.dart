@@ -386,36 +386,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       child: Column(
         children: [
-          RadioListTile<String>(
-            value: 'usage_stats',
-            groupValue: _engineMode,
-            onChanged: (val) {
-              if (val != null) _setEngineMode(val);
-            },
-            activeColor: oneUiGreen,
-            title: Row(
-              children: [
-                const Text(
-                  'Usage Access Engine',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: oneUiGreen.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(6),
+          InkWell(
+            onTap: () => _setEngineMode('usage_stats'),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+              child: Row(
+                children: [
+                  Icon(
+                    isUsageMode ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded,
+                    color: isUsageMode ? oneUiGreen : colorScheme.onSurface.withValues(alpha: 0.4),
+                    size: 22,
                   ),
-                  child: const Text(
-                    'RECOMMENDED',
-                    style: TextStyle(color: oneUiGreen, fontSize: 9, fontWeight: FontWeight.w800),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Text(
+                              'Usage Access Engine',
+                              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: oneUiGreen.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                'RECOMMENDED',
+                                style: TextStyle(color: oneUiGreen, fontSize: 9, fontWeight: FontWeight.w800),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          'Zero Accessibility conflicts. Safe with all government and banking apps.',
+                          style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.55), fontSize: 12),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-            subtitle: const Text(
-              'Zero Accessibility conflicts. Safe with all government and banking apps.',
-              style: TextStyle(fontSize: 12),
+                ],
+              ),
             ),
           ),
           Divider(
@@ -425,20 +442,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
             indent: 20,
             endIndent: 20,
           ),
-          RadioListTile<String>(
-            value: 'accessibility',
-            groupValue: _engineMode,
-            onChanged: (val) {
-              if (val != null) _setEngineMode(val);
-            },
-            activeColor: oneUiBlue,
-            title: const Text(
-              'Accessibility Engine (0ms)',
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-            ),
-            subtitle: const Text(
-              'Instant curtain overlay. May trigger security blocks in government/banking apps.',
-              style: TextStyle(fontSize: 12),
+          InkWell(
+            onTap: () => _setEngineMode('accessibility'),
+            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(26)),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+              child: Row(
+                children: [
+                  Icon(
+                    !isUsageMode ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded,
+                    color: !isUsageMode ? oneUiBlue : colorScheme.onSurface.withValues(alpha: 0.4),
+                    size: 22,
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Accessibility Engine (0ms)',
+                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          'Instant curtain overlay. May trigger security blocks in government/banking apps.',
+                          style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.55), fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
