@@ -991,6 +991,77 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
+  /// High-visibility warning banner shown when Draw Over Other Apps is missing
+  Widget _buildOverlayPermissionWarningBanner() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF2E2207) : const Color(0xFFFFF7E6);
+    final borderColor = isDark ? const Color(0xFF59410D) : const Color(0xFFFFE0A3);
+    final textColor = isDark ? const Color(0xFFFFD580) : const Color(0xFF7A4B00);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: borderColor, width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.shield_outlined, color: textColor, size: 22),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Instant Shield Required',
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Without "Appear on top" permission, Android briefly flashes the locked app before opening the lock screen. Grant this permission to eliminate preview leaks.',
+            style: TextStyle(
+              color: textColor.withValues(alpha: 0.9),
+              fontSize: 13,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () async {
+                HapticFeedback.lightImpact();
+                await PlatformChannelService.openOverlaySettings();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: textColor,
+                foregroundColor: isDark ? Colors.black : Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                elevation: 0,
+              ),
+              icon: const Icon(Icons.touch_app_rounded, size: 16),
+              label: const Text(
+                'Grant "Appear On Top" Permission',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSectionTitle(String title) {
     final colorScheme = Theme.of(context).colorScheme;
     return Padding(
