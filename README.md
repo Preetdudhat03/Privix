@@ -6,28 +6,48 @@
 [![Flutter](https://img.shields.io/badge/Flutter-v3.27%2B-blue)](https://flutter.dev)
 [![License](https://img.shields.io/badge/License-MIT%20%2F%20Personal-orange)](LICENSE)
 
-**Privix** is a high-performance, offline Android app locking application built with **Flutter** and **Kotlin**. It provides real-time, zero-latency protection for sensitive applications using biometric authentication (fingerprint/face unlock) or a PIN.
+**Privix** is a high-performance, offline Android app locking application built with **Flutter** and **Kotlin**. It provides real-time protection for sensitive applications using biometric authentication (fingerprint/face unlock) or a PIN.
 
-Designed with **One UI 7** aesthetics, Privix ensures your personal data, messaging apps, photos, and financial tools remain completely private without collecting any user telemetry or requiring internet access.
+Designed with **Samsung One UI 9** aesthetics and Device Care design philosophy, Privix ensures your personal data, messaging apps, photos, and financial tools remain completely private without collecting any user telemetry or requiring internet access.
 
 ---
 
-## 📥 Latest Release (v2.0.0)
+## 🏛️ Government & Banking App Compatibility Mode
 
-🚀 **[Download Latest APK — Privix v2.0.0](https://github.com/Preetdudhat03/Privix/releases/tag/v2.0.0)**
+Many government applications (*mAadhaar, DigiLocker, Umang, PAN*) and banking applications (*SBI YONO, BHIM UPI, HDFC, ICICI*) enforce strict security policies that block execution if **any** third-party Accessibility Service is enabled on the device.
 
-### Release Highlights:
-- ⚡ **Zero-Latency App Lock Protection (0ms Overlay)**: Instant AMOLED black screen curtain to prevent content preview leaks before authentication.
-- 🔒 **1-Tap Sensitive App Locking**: Pre-configured preset to lock social media, financial, gallery, and messaging apps (*WhatsApp, Instagram, Photos, Paytm, Google Pay, Telegram*).
-- 🚀 **Butter-Smooth Performance**: Native Kotlin icon scaling + Flutter LRU memory icon cache for stutter-free 60/120 FPS list scrolling.
-- 🔑 **Enhanced Pin & Biometric Keypad**: Animated keypad indicators, haptic feedback, and error shake effects.
+Privix solves this with a **Dual Detection Engine**:
+1. **Usage Access Mode (Recommended for Banking & Gov Apps)**:
+   - Uses Android's native `PACKAGE_USAGE_STATS` (`UsageStatsManager`) and a dedicated background foreground service.
+   - **Accessibility Service remains completely OFF in Android Settings.**
+   - Government and banking apps detect **zero** accessibility services and run cleanly without error or blocking!
+2. **Accessibility Mode (0ms Instant Curtain)**:
+   - High-speed window state detection for users who prioritize instantaneous overlay without banking app restrictions.
+
+---
+
+## 🛡️ Threat Warning & Security Fixes
+
+Previous builds could trigger Google Play Protect or Samsung Knox "Threat Warnings" due to intrusive accessibility flags and debug signing. We have eliminated this:
+- **`canRetrieveWindowContent` permanently set to `false`**: Privix cannot and does not read any screen content, keystrokes, OTPs, or passwords.
+- **Restricted Event Scope**: Service only listens to `typeWindowStateChanged` for package names.
+- **Backup & Extraction Disabled**: `android:allowBackup="false"` and `android:fullBackupContent="false"` in manifest.
+- **100% Offline**: Zero internet permissions (`android.permission.INTERNET` is neither requested nor used).
 
 ---
 
 ## ✨ Key Features
 
-- ⚡ **Zero-Latency Protection (0ms Overlay)**
-  Uses native Android `AccessibilityService` events to instantly cover locked applications with a solid AMOLED black curtain overlay, preventing any content preview window before authentication.
+- 🎨 **Samsung One UI 9 Design Hierarchy**
+  - Expansive collapsible viewing headers with live status capsule pills.
+  - Device Care style circular security gauge widget with health score (0-100%).
+  - Inset grouped island cards with thumb-friendly layout.
+  - Segmented pill filter bar and One UI squircle search bar.
+  - Samsung Quick Settings Tile (`PrivixTileService`) for 1-tap pause/resume from notification shade.
+
+- ⚡ **Dual Detection Engines**
+  - **Usage Access Mode**: Safe with mAadhaar, DigiLocker, Umang, and banking apps.
+  - **Accessibility Mode**: 0ms hardware-speed curtain overlay.
 
 - 🔒 **Smart 1-Tap Category Locking**
   - **Lock Sensitive Apps**: Instantly detect and lock messaging, social media, finance, and gallery apps (*WhatsApp, Instagram, Photos, Paytm, Google Pay, Telegram, etc.*) in a single tap.
