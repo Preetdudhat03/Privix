@@ -776,22 +776,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
   ) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return ListTile(
-      onTap: onTap,
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-      subtitle: Text(subtitle, style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.5), fontSize: 11)),
-      trailing: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: (isGranted ? oneUiGreen : oneUiAmber).withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          isGranted ? 'GRANTED' : 'GRANT',
-          style: TextStyle(
-            color: isGranted ? oneUiGreen : oneUiAmber,
-            fontSize: 10,
-            fontWeight: FontWeight.w800,
+    return Material(
+      color: Colors.transparent,
+      child: ListTile(
+        onTap: onTap,
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+        subtitle: Text(subtitle, style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.5), fontSize: 11)),
+        trailing: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: (isGranted ? oneUiGreen : oneUiAmber).withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            isGranted ? 'GRANTED' : 'GRANT',
+            style: TextStyle(
+              color: isGranted ? oneUiGreen : oneUiAmber,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ),
       ),
