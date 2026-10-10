@@ -581,7 +581,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     onTap: () => _toggleEngineMode('usage_stats'),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
                       decoration: BoxDecoration(
                         color: isUsageMode
                             ? (isDark ? const Color(0xFF20232D) : Colors.white)
@@ -597,24 +597,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               ]
                             : null,
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.verified_user_rounded,
-                            size: 16,
-                            color: isUsageMode ? oneUiGreen : colorScheme.onSurface.withValues(alpha: 0.5),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Usage Access (Gov Safe)',
-                            style: TextStyle(
-                              color: isUsageMode ? colorScheme.onSurface : colorScheme.onSurface.withValues(alpha: 0.5),
-                              fontSize: 12,
-                              fontWeight: isUsageMode ? FontWeight.w700 : FontWeight.w500,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.verified_user_rounded,
+                              size: 16,
+                              color: isUsageMode ? oneUiGreen : colorScheme.onSurface.withValues(alpha: 0.5),
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 6),
+                            Text(
+                              'Usage Access (Safe)',
+                              style: TextStyle(
+                                color: isUsageMode ? colorScheme.onSurface : colorScheme.onSurface.withValues(alpha: 0.5),
+                                fontSize: 12,
+                                fontWeight: isUsageMode ? FontWeight.w700 : FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -624,7 +627,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     onTap: () => _toggleEngineMode('accessibility'),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
                       decoration: BoxDecoration(
                         color: !isUsageMode
                             ? (isDark ? const Color(0xFF20232D) : Colors.white)
@@ -640,24 +643,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               ]
                             : null,
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.bolt_rounded,
-                            size: 16,
-                            color: !isUsageMode ? oneUiBlue : colorScheme.onSurface.withValues(alpha: 0.5),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Accessibility (0ms)',
-                            style: TextStyle(
-                              color: !isUsageMode ? colorScheme.onSurface : colorScheme.onSurface.withValues(alpha: 0.5),
-                              fontSize: 12,
-                              fontWeight: !isUsageMode ? FontWeight.w700 : FontWeight.w500,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.bolt_rounded,
+                              size: 16,
+                              color: !isUsageMode ? oneUiBlue : colorScheme.onSurface.withValues(alpha: 0.5),
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 6),
+                            Text(
+                              'Accessibility (0ms)',
+                              style: TextStyle(
+                                color: !isUsageMode ? colorScheme.onSurface : colorScheme.onSurface.withValues(alpha: 0.5),
+                                fontSize: 12,
+                                fontWeight: !isUsageMode ? FontWeight.w700 : FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
