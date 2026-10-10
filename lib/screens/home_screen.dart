@@ -174,11 +174,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       centerTitle: false,
                       title: Row(
                         children: [
+                          Image.asset(
+                            'assets/logo.png',
+                            width: 28,
+                            height: 28,
+                          ),
+                          const SizedBox(width: 8),
                           Text(
                             'Privix',
                             style: TextStyle(
                               color: colorScheme.onSurface,
-                              fontSize: 28,
+                              fontSize: 26,
                               fontWeight: FontWeight.w800,
                               fontFamily: 'Inter',
                               letterSpacing: -0.5,
@@ -193,14 +199,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         child: Stack(
                           children: [
                             Positioned(
-                              right: 16,
-                              top: 50,
+                              right: 12,
+                              top: 40,
                               child: Opacity(
-                                opacity: isDark ? 0.08 : 0.05,
-                                child: const Icon(
-                                  Icons.shield_rounded,
-                                  size: 160,
-                                  color: oneUiBlue,
+                                opacity: isDark ? 0.12 : 0.08,
+                                child: Image.asset(
+                                  'assets/logo.png',
+                                  width: 150,
+                                  height: 150,
                                 ),
                               ),
                             ),
