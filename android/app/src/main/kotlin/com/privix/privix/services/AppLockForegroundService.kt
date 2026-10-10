@@ -56,6 +56,7 @@ class AppLockForegroundService : Service() {
     private lateinit var usageStatsManager: UsageStatsManager
     private val handler = Handler(Looper.getMainLooper())
     private var lastForegroundPackage: String? = null
+    private var lastProcessedEventTime: Long = 0L
     private var isScreenInteractive = true
 
     private val pollRunnable = object : Runnable {
@@ -82,11 +83,13 @@ class AppLockForegroundService : Service() {
                     UnlockManager.clear()
                     LockSessionManager.clearAll()
                     lastForegroundPackage = null
+                    lastProcessedEventTime = 0L
                 }
                 Intent.ACTION_SCREEN_ON, Intent.ACTION_USER_PRESENT -> {
                     Log.d(TAG, "[UsageStats] Screen ON: Resuming low-latency polling")
                     if (!isScreenInteractive) {
                         isScreenInteractive = true
+                        lastProcessedEventTime = System.currentTimeMillis() - 500L
                         handler.removeCallbacks(pollRunnable)
                         handler.post(pollRunnable)
                     }
@@ -101,6 +104,7 @@ class AppLockForegroundService : Service() {
         usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         CurtainManager.init(this)
         isRunning = true
+        lastProcessedEventTime = System.currentTimeMillis() - 1000L
 
         startForeground(NOTIFICATION_ID, createNotification())
 
@@ -130,14 +134,17 @@ class AppLockForegroundService : Service() {
         }
 
         val now = System.currentTimeMillis()
-        val events = usageStatsManager.queryEvents(now - 1000L, now)
+        val queryStart = if (lastProcessedEventTime > 0) lastProcessedEventTime else (now - 1000L)
+        val events = usageStatsManager.queryEvents(queryStart, now)
         val event = UsageEvents.Event()
 
+        var latestEventTime = lastProcessedEventTime
         var currentTopPackage: String? = null
 
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
-            if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
+            if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED && event.timeStamp > latestEventTime) {
+                latestEventTime = event.timeStamp
                 currentTopPackage = event.packageName
             }
         }
@@ -146,12 +153,14 @@ class AppLockForegroundService : Service() {
             return
         }
 
+        lastProcessedEventTime = latestEventTime
+
         // Privix itself should not trigger lock screen
         if (currentTopPackage == "com.privix.privix") {
             return
         }
 
-        // System UI / Home Launcher transitions
+        // System UI transitions
         val category = WindowClassifier.classify(currentTopPackage)
         if (category == WindowCategory.SYSTEM_UI) {
             return
@@ -205,7 +214,32 @@ class AppLockForegroundService : Service() {
                     Intent.FLAG_ACTIVITY_CLEAR_TOP or
                     Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
         }
-        startActivity(authIntent)
+
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                val options = ActivityOptions.makeBasic().apply {
+                    setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
+                }
+                val pi = PendingIntent.getActivity(
+                    this,
+                    0,
+                    authIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                    options.toBundle()
+                )
+                pi.send()
+            } else {
+                startActivity(authIntent)
+            }
+            Log.d(TAG, "[UsageStats] AuthActivity dispatched successfully for $currentTopPackage")
+        } catch (e: Exception) {
+            Log.e(TAG, "[UsageStats] Error starting AuthActivity via PendingIntent, trying direct startActivity", e)
+            try {
+                startActivity(authIntent)
+            } catch (e2: Exception) {
+                Log.e(TAG, "[UsageStats] Direct startActivity also failed", e2)
+            }
+        }
     }
 
     private fun createNotification(): Notification {
