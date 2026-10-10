@@ -148,17 +148,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ..._relockOptions.map((option) {
               final value = option['value'] as int;
               final isSelected = _relockTimeout == value;
-              return Container(
-                margin: const EdgeInsets.symmetric(vertical: 2),
-                decoration: BoxDecoration(
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Material(
                   color: isSelected
                       ? oneUiBlue.withValues(alpha: 0.1)
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(16),
-                ),
-                child: ListTile(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  title: Text(
+                  child: ListTile(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    title: Text(
                     option['label'] as String,
                     style: TextStyle(
                       color: isSelected ? oneUiBlue : theme.colorScheme.onSurface,
