@@ -6,11 +6,10 @@ import '../services/storage_service.dart';
 import '../services/icon_cache_service.dart';
 import '../widgets/app_tile.dart';
 
-/// Filter tabs for App Selection
+/// Filter tabs for Samsung One UI 9 App Selection
 enum AppFilterCategory { all, locked, sensitive, user }
 
-/// Screen to select which apps to lock.
-/// Includes preset quick actions, category filters, and debounced search.
+/// Screen to select which apps to lock, designed with Samsung One UI 9 aesthetics.
 class AppSelectionScreen extends StatefulWidget {
   const AppSelectionScreen({super.key});
 
@@ -27,11 +26,15 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
   AppFilterCategory _selectedCategory = AppFilterCategory.all;
   final _searchController = TextEditingController();
 
+  static const Color oneUiBlue = Color(0xFF1E6FFE);
+  static const Color oneUiGreen = Color(0xFF28C76F);
+
   // Known sensitive apps to suggest for locking
   static const _sensitiveKeywords = [
     'whatsapp', 'instagram', 'facebook', 'messenger', 'telegram', 'snapchat',
     'paytm', 'gpay', 'phonepe', 'bank', 'gallery', 'photos', 'drive', 'files',
-    'gmail', 'outlook', 'notes', 'vault', 'crypto', 'binance', 'coinbase'
+    'gmail', 'outlook', 'notes', 'vault', 'crypto', 'binance', 'coinbase',
+    'aadhaar', 'digilocker', 'yono', 'bhim', 'message', 'sms'
   ];
 
   @override
@@ -117,7 +120,8 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
             return _isSensitiveApp(app);
           case AppFilterCategory.user:
             return !app.packageName.startsWith('com.android.') &&
-                   !app.packageName.startsWith('com.google.android.');
+                   !app.packageName.startsWith('com.google.android.') &&
+                   !app.packageName.startsWith('com.sec.android.');
           case AppFilterCategory.all:
             return true;
         }
@@ -144,7 +148,9 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
 
   void _onCategorySelected(AppFilterCategory category) {
     HapticFeedback.selectionClick();
-    _selectedCategory = category;
+    setState(() {
+      _selectedCategory = category;
+    });
     _applyFilters();
   }
 
@@ -178,7 +184,7 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('🔒 Sensitive apps (Social, Finance, Photos) locked!'),
+          content: Text('🔒 Sensitive apps (Social, Messaging, Finance) locked!'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -197,202 +203,309 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final colorScheme = theme.colorScheme;
     final lockedCount = _lockedPackages.length;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: _isLoading
-        ? const Center(child: CircularProgressIndicator(color: Color(0xFF007AFF)))
-        : Scrollbar(
-            interactive: true,
-            child: CustomScrollView(
-              physics: const AlwaysScrollableScrollPhysics(
-                parent: BouncingScrollPhysics(),
-              ),
-              slivers: [
-                // Header
-                SliverAppBar(
-                  backgroundColor: theme.scaffoldBackgroundColor,
-                  expandedHeight: 160,
-                  collapsedHeight: 70,
-                  pinned: true,
-                  flexibleSpace: FlexibleSpaceBar(
-                    titlePadding: const EdgeInsets.only(left: 24, bottom: 16),
-                    centerTitle: false,
-                    title: Text(
-                      'Select Apps',
-                      style: TextStyle(
-                        color: colorScheme.onSurface,
-                        fontSize: 26,
-                        fontWeight: FontWeight.w700,
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                    background: Container(color: theme.scaffoldBackgroundColor),
-                  ),
-                  leading: IconButton(
-                    icon: Icon(Icons.arrow_back_ios_new_rounded, color: colorScheme.onSurface, size: 20),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  actions: [
-                    IconButton(
-                      icon: Icon(Icons.refresh_rounded, color: colorScheme.onSurface.withValues(alpha: 0.7)),
-                      onPressed: _refreshApps,
-                      tooltip: 'Refresh app list',
-                    ),
-                    const SizedBox(width: 8),
-                  ],
+          ? const Center(child: CircularProgressIndicator(color: oneUiBlue))
+          : Scrollbar(
+              interactive: true,
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
                 ),
-
-                // Search Bar
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                    child: Container(
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surface,
-                        borderRadius: BorderRadius.circular(100),
-                        border: Border.all(
-                          color: colorScheme.onSurface.withValues(alpha: 0.06),
-                        ),
-                      ),
-                      child: TextField(
-                        controller: _searchController,
-                        onChanged: _onSearchChanged,
-                        style: TextStyle(color: colorScheme.onSurface, fontSize: 15),
-                        decoration: InputDecoration(
-                          hintText: 'Search applications',
-                          hintStyle: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.3)),
-                          prefixIcon: Padding(
-                            padding: const EdgeInsets.only(left: 12),
-                            child: Icon(
-                              Icons.search_rounded,
-                              color: colorScheme.onSurface.withValues(alpha: 0.4),
-                              size: 22,
+                slivers: [
+                  // One UI 9 Expansive Collapsible Header
+                  SliverAppBar(
+                    backgroundColor: theme.scaffoldBackgroundColor,
+                    expandedHeight: 180,
+                    collapsedHeight: 70,
+                    pinned: true,
+                    elevation: 0,
+                    flexibleSpace: FlexibleSpaceBar(
+                      titlePadding: const EdgeInsets.only(left: 24, bottom: 16),
+                      centerTitle: false,
+                      title: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Protected Apps',
+                            style: TextStyle(
+                              color: colorScheme.onSurface,
+                              fontSize: 26,
+                              fontWeight: FontWeight.w800,
+                              fontFamily: 'Inter',
+                              letterSpacing: -0.5,
                             ),
                           ),
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                          suffixIcon: _searchQuery.isNotEmpty
-                            ? IconButton(
-                                icon: Icon(Icons.close_rounded, color: colorScheme.onSurface.withValues(alpha: 0.5), size: 18),
-                                onPressed: () {
-                                  _searchController.clear();
-                                  _onSearchChanged('');
-                                },
-                              )
-                            : null,
-                        ),
+                          Text(
+                            '$lockedCount of ${_apps.length} locked',
+                            style: TextStyle(
+                              color: colorScheme.onSurface.withValues(alpha: 0.5),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
+                      background: Container(color: theme.scaffoldBackgroundColor),
                     ),
-                  ),
-                ),
-
-                // Category Chips
-                SliverToBoxAdapter(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-                    child: Row(
-                      children: [
-                        _buildFilterChip('All (${_apps.length})', AppFilterCategory.all),
-                        const SizedBox(width: 8),
-                        _buildFilterChip('Locked ($lockedCount)', AppFilterCategory.locked),
-                        const SizedBox(width: 8),
-                        _buildFilterChip('Sensitive', AppFilterCategory.sensitive),
-                        const SizedBox(width: 8),
-                        _buildFilterChip('User Apps', AppFilterCategory.user),
-                      ],
+                    leading: IconButton(
+                      icon: Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        color: colorScheme.onSurface,
+                        size: 20,
+                      ),
+                      onPressed: () => Navigator.pop(context),
                     ),
+                    actions: [
+                      IconButton(
+                        icon: Icon(
+                          Icons.refresh_rounded,
+                          color: colorScheme.onSurface.withValues(alpha: 0.8),
+                        ),
+                        onPressed: _refreshApps,
+                        tooltip: 'Refresh list',
+                      ),
+                      const SizedBox(width: 8),
+                    ],
                   ),
-                ),
 
-                // Quick Action Bar
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: ActionChip(
-                            avatar: const Icon(Icons.security_rounded, size: 16, color: Color(0xFF007AFF)),
-                            label: const Text('Lock Sensitive', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                            backgroundColor: const Color(0xFF007AFF).withValues(alpha: 0.1),
-                            onPressed: _lockSensitiveAppsPreset,
-                            side: BorderSide.none,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  // One UI 9 Squircle Search Pill
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      child: Container(
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surface,
+                          borderRadius: BorderRadius.circular(26),
+                          border: Border.all(
+                            color: isDark ? const Color(0xFF262832) : const Color(0xFFE4E7EE),
+                            width: 1,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        ActionChip(
-                          avatar: Icon(Icons.lock_open_rounded, size: 16, color: colorScheme.onSurface.withValues(alpha: 0.6)),
-                          label: const Text('Unlock All', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
-                          backgroundColor: colorScheme.surface,
-                          onPressed: _unlockAllPreset,
-                          side: BorderSide.none,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        child: TextField(
+                          controller: _searchController,
+                          onChanged: _onSearchChanged,
+                          style: TextStyle(color: colorScheme.onSurface, fontSize: 15),
+                          decoration: InputDecoration(
+                            hintText: 'Search installed applications',
+                            hintStyle: TextStyle(
+                              color: colorScheme.onSurface.withValues(alpha: 0.35),
+                              fontSize: 14,
+                            ),
+                            prefixIcon: Padding(
+                              padding: const EdgeInsets.only(left: 14, right: 8),
+                              child: Icon(
+                                Icons.search_rounded,
+                                color: colorScheme.onSurface.withValues(alpha: 0.5),
+                                size: 22,
+                              ),
+                            ),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            suffixIcon: _searchQuery.isNotEmpty
+                                ? IconButton(
+                                    icon: Icon(
+                                      Icons.close_rounded,
+                                      color: colorScheme.onSurface.withValues(alpha: 0.6),
+                                      size: 18,
+                                    ),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      _onSearchChanged('');
+                                    },
+                                  )
+                                : null,
+                          ),
                         ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
 
-                // App List
-                _filteredApps.isEmpty
-                  ? SliverFillRemaining(
-                      child: Center(
-                        child: Text(
-                          _searchQuery.isNotEmpty
-                            ? 'No apps match "$_searchQuery"'
-                            : 'No apps in this category',
-                          style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.35)),
-                        ),
-                      ),
-                    )
-                  : SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final app = _filteredApps[index];
-                          return AppTile(
-                            key: ValueKey(app.packageName),
-                            appName: app.appName,
-                            packageName: app.packageName,
-                            isLocked: app.isLocked,
-                            onToggle: (value) => _onToggle(app, value),
-                          );
-                        },
-                        childCount: _filteredApps.length,
-                        addAutomaticKeepAlives: false,
-                        addRepaintBoundaries: true,
+                  // One UI 9 Segmented Pill Capsule Filter Bar
+                  SliverToBoxAdapter(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      child: Row(
+                        children: [
+                          _buildFilterPill('All (${_apps.length})', AppFilterCategory.all),
+                          const SizedBox(width: 8),
+                          _buildFilterPill('Locked ($lockedCount)', AppFilterCategory.locked),
+                          const SizedBox(width: 8),
+                          _buildFilterPill('Sensitive', AppFilterCategory.sensitive),
+                          const SizedBox(width: 8),
+                          _buildFilterPill('User Apps', AppFilterCategory.user),
+                        ],
                       ),
                     ),
-                const SliverToBoxAdapter(child: SizedBox(height: 32)),
-              ],
+                  ),
+
+                  // One UI 9 1-Tap Sensitive Apps Recommendation Banner
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF161922) : const Color(0xFFEFF4FC),
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(
+                            color: oneUiBlue.withValues(alpha: 0.25),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: oneUiBlue.withValues(alpha: 0.15),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.bolt_rounded, color: oneUiBlue, size: 20),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '1-Tap Sensitive App Lock',
+                                    style: TextStyle(
+                                      color: colorScheme.onSurface,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Auto-secures WhatsApp, Photos, Finance',
+                                    style: TextStyle(
+                                      color: colorScheme.onSurface.withValues(alpha: 0.6),
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            ElevatedButton(
+                              onPressed: _lockSensitiveAppsPreset,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: oneUiBlue,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              child: const Text('Lock All', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                            ),
+                            const SizedBox(width: 6),
+                            IconButton(
+                              onPressed: _unlockAllPreset,
+                              tooltip: 'Unlock All',
+                              icon: Icon(
+                                Icons.lock_open_rounded,
+                                color: colorScheme.onSurface.withValues(alpha: 0.5),
+                                size: 18,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // App List
+                  _filteredApps.isEmpty
+                      ? SliverFillRemaining(
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.search_off_rounded,
+                                  size: 48,
+                                  color: colorScheme.onSurface.withValues(alpha: 0.2),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  _searchQuery.isNotEmpty
+                                      ? 'No apps match "$_searchQuery"'
+                                      : 'No apps in this category',
+                                  style: TextStyle(
+                                    color: colorScheme.onSurface.withValues(alpha: 0.4),
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              final app = _filteredApps[index];
+                              return AppTile(
+                                key: ValueKey(app.packageName),
+                                appName: app.appName,
+                                packageName: app.packageName,
+                                isLocked: app.isLocked,
+                                onToggle: (value) => _onToggle(app, value),
+                              );
+                            },
+                            childCount: _filteredApps.length,
+                            addAutomaticKeepAlives: false,
+                            addRepaintBoundaries: true,
+                          ),
+                        ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 32)),
+                ],
+              ),
             ),
-          ),
     );
   }
 
-  Widget _buildFilterChip(String label, AppFilterCategory category) {
+  Widget _buildFilterPill(String label, AppFilterCategory category) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final isSelected = _selectedCategory == category;
 
-    return ChoiceChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (_) => _onCategorySelected(category),
-      selectedColor: const Color(0xFF007AFF),
-      backgroundColor: theme.colorScheme.surface,
-      labelStyle: TextStyle(
-        color: isSelected ? Colors.white : theme.colorScheme.onSurface.withValues(alpha: 0.7),
-        fontSize: 13,
-        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+    return GestureDetector(
+      onTap: () => _onCategorySelected(category),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? oneUiBlue
+              : (isDark ? const Color(0xFF1A1C23) : const Color(0xFFE9ECF2)),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected
+                ? oneUiBlue
+                : (isDark ? const Color(0xFF262832) : const Color(0xFFDCE1EB)),
+            width: 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected
+                ? Colors.white
+                : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+            fontSize: 13,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+          ),
+        ),
       ),
-      side: BorderSide.none,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
-      showCheckmark: false,
     );
   }
 }
