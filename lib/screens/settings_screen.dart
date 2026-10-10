@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../services/storage_service.dart';
 import '../services/platform_channel_service.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
-/// Settings screen for configuring relock behavior and permissions.
+/// Settings screen designed with Samsung One UI 9 grouped card hierarchy.
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -13,8 +14,21 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   int _relockTimeout = 0;
-  String _appVersion = '1.0.0';
+  bool _biometricEnabled = false;
+  String _engineMode = 'usage_stats';
+  bool _isPaused = false;
+  int _pausedRemainingSeconds = 0;
+  bool _usageStatsGranted = false;
+  bool _accessibilityGranted = false;
+  bool _overlayGranted = false;
+  bool _batteryOptimized = false;
+  String _appVersion = '2.1.3';
   bool _isLoading = true;
+
+  static const Color oneUiBlue = Color(0xFF1E6FFE);
+  static const Color oneUiGreen = Color(0xFF28C76F);
+  static const Color oneUiAmber = Color(0xFFFF9F43);
+  static const Color oneUiRed = Color(0xFFFF495C);
 
   static const _relockOptions = [
     {'label': 'Immediately (0 seconds)', 'value': 0},
@@ -22,7 +36,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     {'label': '30 seconds', 'value': 30000},
     {'label': '1 minute', 'value': 60000},
     {'label': '5 minutes', 'value': 300000},
-    {'label': 'Until screen off (-1)', 'value': -1},
+    {'label': 'Until screen turns off', 'value': -1},
   ];
 
   @override
@@ -32,32 +46,78 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadSettings() async {
-    final relockTimeout = await StorageService.getRelockTimeout();
-
-    String version = '1.0.0';
     try {
-      final packageInfo = await PackageInfo.fromPlatform();
-      version = packageInfo.version;
-    } catch (e) {
-      // Ignore and use default
-    }
+      final results = await Future.wait([
+        StorageService.getRelockTimeout(),
+        StorageService.isBiometricEnabled(),
+        StorageService.getEngineMode(),
+        PlatformChannelService.isProtectionPaused(),
+        PlatformChannelService.getPausedRemainingSeconds(),
+        PlatformChannelService.checkUsageStatsPermission(),
+        PlatformChannelService.checkAccessibilityPermission(),
+        PlatformChannelService.checkOverlayPermission(),
+        PlatformChannelService.checkBatteryOptimization(),
+      ]);
 
-    if (mounted) {
-      setState(() {
-        _relockTimeout = relockTimeout;
-        _appVersion = version;
-        _isLoading = false;
-      });
+      String version = '2.1.3';
+      try {
+        final packageInfo = await PackageInfo.fromPlatform();
+        version = packageInfo.version;
+      } catch (_) {}
+
+      if (mounted) {
+        setState(() {
+          _relockTimeout = results[0] as int;
+          _biometricEnabled = results[1] as bool;
+          _engineMode = results[2] as String;
+          _isPaused = results[3] as bool;
+          _pausedRemainingSeconds = results[4] as int;
+          _usageStatsGranted = results[5] as bool;
+          _accessibilityGranted = results[6] as bool;
+          _overlayGranted = results[7] as bool;
+          _batteryOptimized = results[8] as bool;
+          _appVersion = version;
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  Future<void> _setEngineMode(String mode) async {
+    HapticFeedback.mediumImpact();
+    await StorageService.setEngineMode(mode);
+    setState(() => _engineMode = mode);
+    await _loadSettings();
+  }
+
+  Future<void> _setBiometric(bool enabled) async {
+    HapticFeedback.lightImpact();
+    await StorageService.setBiometricEnabled(enabled);
+    setState(() => _biometricEnabled = enabled);
+  }
+
   Future<void> _setRelockTimeout(int timeoutMs) async {
+    HapticFeedback.lightImpact();
     await StorageService.setRelockTimeout(timeoutMs);
-    if (mounted) setState(() => _relockTimeout = timeoutMs);
+    setState(() => _relockTimeout = timeoutMs);
+  }
+
+  Future<void> _togglePause(int minutes) async {
+    HapticFeedback.mediumImpact();
+    if (_isPaused) {
+      await PlatformChannelService.resumeProtection();
+    } else {
+      await PlatformChannelService.pauseProtection(minutes: minutes);
+    }
+    await _loadSettings();
   }
 
   void _showRelockPicker() {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: theme.colorScheme.surface,
@@ -65,48 +125,59 @@ class _SettingsScreenState extends State<SettingsScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
       builder: (context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 40,
+              width: 44,
               height: 4,
               decoration: BoxDecoration(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.24),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
             Text(
-              'Relock Timer',
+              'Relock Timeout',
               style: TextStyle(
                 color: theme.colorScheme.onSurface,
                 fontSize: 18,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             ..._relockOptions.map((option) {
               final value = option['value'] as int;
               final isSelected = _relockTimeout == value;
-              return ListTile(
-                title: Text(
-                  option['label'] as String,
-                  style: TextStyle(
-                    color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                  ),
+              return Container(
+                margin: const EdgeInsets.symmetric(vertical: 2),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? oneUiBlue.withValues(alpha: 0.1)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                trailing: isSelected
-                  ? Icon(Icons.check_circle_rounded, color: theme.colorScheme.primary, size: 24)
-                  : null,
-                onTap: () {
-                  _setRelockTimeout(value);
-                  Navigator.pop(context);
-                },
+                child: ListTile(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  title: Text(
+                    option['label'] as String,
+                    style: TextStyle(
+                      color: isSelected ? oneUiBlue : theme.colorScheme.onSurface,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
+                  trailing: isSelected
+                      ? const Icon(Icons.check_circle_rounded, color: oneUiBlue, size: 22)
+                      : null,
+                  onTap: () {
+                    _setRelockTimeout(value);
+                    Navigator.pop(context);
+                  },
+                ),
               );
             }),
+            const SizedBox(height: 16),
           ],
         ),
       ),
@@ -116,238 +187,658 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: _isLoading
-        ? Center(child: CircularProgressIndicator(color: theme.colorScheme.primary))
-        : CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              // One UI Large Header
-              SliverAppBar(
-                backgroundColor: theme.scaffoldBackgroundColor,
-                expandedHeight: 180,
-                collapsedHeight: 80,
-                pinned: true,
-                flexibleSpace: FlexibleSpaceBar(
-                  titlePadding: const EdgeInsets.only(left: 24, bottom: 16),
-                  centerTitle: false,
-                  title: Text(
-                    'Settings',
-                    style: TextStyle(
+          ? const Center(child: CircularProgressIndicator(color: oneUiBlue))
+          : CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                // One UI 9 Expansive Collapsible Header
+                SliverAppBar(
+                  backgroundColor: theme.scaffoldBackgroundColor,
+                  expandedHeight: 180,
+                  collapsedHeight: 70,
+                  pinned: true,
+                  elevation: 0,
+                  flexibleSpace: FlexibleSpaceBar(
+                    titlePadding: const EdgeInsets.only(left: 24, bottom: 16),
+                    centerTitle: false,
+                    title: Text(
+                      'Settings',
+                      style: TextStyle(
+                        color: colorScheme.onSurface,
+                        fontSize: 26,
+                        fontWeight: FontWeight.w800,
+                        fontFamily: 'Inter',
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    background: Container(color: theme.scaffoldBackgroundColor),
+                  ),
+                  leading: IconButton(
+                    icon: Icon(
+                      Icons.arrow_back_ios_new_rounded,
                       color: colorScheme.onSurface,
-                      fontSize: 26,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'Inter',
+                      size: 20,
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ),
+
+                // Settings Content
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 1. Government & Banking App Compatibility (The User's Core Problem!)
+                        _buildSectionTitle('GOVERNMENT & BANKING APP COMPATIBILITY'),
+                        const SizedBox(height: 8),
+                        _buildGovCompatibilityCard(),
+                        const SizedBox(height: 20),
+
+                        // 2. Detection Engine Mode
+                        _buildSectionTitle('DETECTION ENGINE'),
+                        const SizedBox(height: 8),
+                        _buildDetectionEngineCard(),
+                        const SizedBox(height: 20),
+
+                        // 3. Temporary Pause Protection
+                        _buildSectionTitle('TEMPORARY PAUSE PROTECTION'),
+                        const SizedBox(height: 8),
+                        _buildPauseCard(),
+                        const SizedBox(height: 20),
+
+                        // 4. Security & Authentication
+                        _buildSectionTitle('AUTHENTICATION & TIMEOUT'),
+                        const SizedBox(height: 8),
+                        _buildAuthCard(),
+                        const SizedBox(height: 20),
+
+                        // 5. System Permissions
+                        _buildSectionTitle('SYSTEM PERMISSIONS'),
+                        const SizedBox(height: 8),
+                        _buildPermissionsCard(),
+                        const SizedBox(height: 20),
+
+                        // 6. Security Assurance & Privacy
+                        _buildSectionTitle('PRIVACY & THREAT SAFETY'),
+                        const SizedBox(height: 8),
+                        _buildSecurityAssuranceCard(),
+                      ],
                     ),
                   ),
-                  background: Container(color: theme.scaffoldBackgroundColor),
                 ),
-                leading: IconButton(
-                  icon: Icon(Icons.arrow_back_ios_new_rounded, color: colorScheme.onSurface, size: 20),
-                  onPressed: () => Navigator.pop(context),
+              ],
+            ),
+    );
+  }
+
+  /// Government & Banking App Compatibility Card
+  Widget _buildGovCompatibilityCard() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final colorScheme = theme.colorScheme;
+    final isUsageMode = _engineMode == 'usage_stats';
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isUsageMode
+            ? (isDark ? const Color(0xFF0F1E19) : const Color(0xFFEBFBF3))
+            : theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(
+          color: isUsageMode
+              ? oneUiGreen.withValues(alpha: 0.4)
+              : (isDark ? const Color(0xFF262832) : const Color(0xFFE4E7EE)),
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: oneUiGreen.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.verified_user_rounded,
+                  color: oneUiGreen,
+                  size: 22,
                 ),
               ),
-
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
-                  child: Column(
-                    children: [
-                      // Security Focus Block
-                      Container(
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surface,
-                          borderRadius: BorderRadius.circular(32),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: const Color(0xFF007AFF).withValues(alpha: 0.12),
-                              ),
-                              child: const Icon(Icons.lock_person_rounded, color: Color(0xFF007AFF), size: 24),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Secure Auth',
-                                    style: TextStyle(color: colorScheme.onSurface, fontSize: 16, fontWeight: FontWeight.w600),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    "Privix uses device Biometrics (Fingerprint/Face) or PIN.",
-                                    style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.5), fontSize: 13),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Why Government Apps Stop Working',
+                      style: TextStyle(
+                        color: colorScheme.onSurface,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
                       ),
-                      const SizedBox(height: 32),
-
-                      // Behavior section
-                      _buildSectionHeader('Behavior', colorScheme),
-                      const SizedBox(height: 12),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surface,
-                          borderRadius: BorderRadius.circular(32),
-                        ),
-                        child: _buildSettingTile(
-                          icon: Icons.timer_rounded,
-                          title: 'Relock Timer',
-                          subtitle: _getRelockLabel(),
-                          showDivider: false,
-                          onTap: _showRelockPicker,
-                          colorScheme: colorScheme,
-                        ),
+                    ),
+                    Text(
+                      'mAadhaar • DigiLocker • SBI YONO • UPI',
+                      style: TextStyle(
+                        color: oneUiGreen,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
                       ),
-                      const SizedBox(height: 32),
-
-                      // Permissions section
-                      _buildSectionHeader('Permissions', colorScheme),
-                      const SizedBox(height: 12),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surface,
-                          borderRadius: BorderRadius.circular(32),
-                        ),
-                        child: Column(
-                          children: [
-                            _buildSettingTile(
-                              icon: Icons.accessibility_new_rounded,
-                              title: 'Accessibility Service',
-                              subtitle: 'Required for real-time app detection',
-                              showDivider: true,
-                              onTap: () => PlatformChannelService.openAccessibilitySettings(),
-                              colorScheme: colorScheme,
-                            ),
-                            _buildSettingTile(
-                              icon: Icons.layers_rounded,
-                              title: 'Draw Over Apps',
-                              subtitle: 'Required for zero-latency lock screen',
-                              showDivider: true,
-                              onTap: () => PlatformChannelService.openOverlaySettings(),
-                              colorScheme: colorScheme,
-                            ),
-                            _buildSettingTile(
-                              icon: Icons.battery_saver_rounded,
-                              title: 'Battery Optimization',
-                              subtitle: 'Prevent system background termination',
-                              showDivider: false,
-                              onTap: () => PlatformChannelService.openBatteryOptimizationSettings(),
-                              colorScheme: colorScheme,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 48),
-
-                      // About
-                      Text(
-                        'Privix App Lock v$_appVersion',
-                        style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.25), fontSize: 13),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Enhanced Zero-Latency Protection',
-                        style: TextStyle(color: const Color(0xFF007AFF).withValues(alpha: 0.6), fontSize: 11, fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          Text(
+            'Government & banking applications check Android Accessibility Services and block access if ANY third-party service is enabled.\n\n'
+            'With Usage Access Mode, Privix does NOT use Accessibility at all. You can turn Accessibility Service completely OFF in Android Settings, and all government apps will work 100% smoothly!',
+            style: TextStyle(
+              color: colorScheme.onSurface.withValues(alpha: 0.75),
+              fontSize: 13,
+              height: 1.4,
+            ),
+          ),
+          if (_accessibilityGranted) ...[
+            const SizedBox(height: 14),
+            OutlinedButton.icon(
+              onPressed: () => PlatformChannelService.openAccessibilitySettings(),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: oneUiAmber,
+                side: BorderSide(color: oneUiAmber.withValues(alpha: 0.5)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              icon: const Icon(Icons.settings_power_rounded, size: 18),
+              label: const Text('Turn OFF Accessibility in Settings'),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
-  String _getRelockLabel() {
-    for (final option in _relockOptions) {
-      if (option['value'] == _relockTimeout) {
-        return option['label'] as String;
-      }
-    }
-    return 'Immediately (0 seconds)';
+  /// Detection Engine Switcher
+  Widget _buildDetectionEngineCard() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final colorScheme = theme.colorScheme;
+    final isUsageMode = _engineMode == 'usage_stats';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(
+          color: isDark ? const Color(0xFF262832) : const Color(0xFFE4E7EE),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          RadioListTile<String>(
+            value: 'usage_stats',
+            groupValue: _engineMode,
+            onChanged: (val) {
+              if (val != null) _setEngineMode(val);
+            },
+            activeColor: oneUiGreen,
+            title: Row(
+              children: [
+                const Text(
+                  'Usage Access Engine',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: oneUiGreen.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    'RECOMMENDED',
+                    style: TextStyle(color: oneUiGreen, fontSize: 9, fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ],
+            ),
+            subtitle: const Text(
+              'Zero Accessibility conflicts. Safe with all government and banking apps.',
+              style: TextStyle(fontSize: 12),
+            ),
+          ),
+          Divider(
+            height: 1,
+            thickness: 0.8,
+            color: colorScheme.onSurface.withValues(alpha: 0.08),
+            indent: 20,
+            endIndent: 20,
+          ),
+          RadioListTile<String>(
+            value: 'accessibility',
+            groupValue: _engineMode,
+            onChanged: (val) {
+              if (val != null) _setEngineMode(val);
+            },
+            activeColor: oneUiBlue,
+            title: const Text(
+              'Accessibility Engine (0ms)',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+            ),
+            subtitle: const Text(
+              'Instant curtain overlay. May trigger security blocks in government/banking apps.',
+              style: TextStyle(fontSize: 12),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
-  Widget _buildSectionHeader(String title, ColorScheme colorScheme) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 12, bottom: 8),
-      child: Text(
-        title,
-        style: TextStyle(
-          color: colorScheme.onSurface.withValues(alpha: 0.5),
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
+  /// Pause Protection Card
+  Widget _buildPauseCard() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(
+          color: isDark ? const Color(0xFF262832) : const Color(0xFFE4E7EE),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: (_isPaused ? oneUiGreen : oneUiAmber).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      _isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                      color: _isPaused ? oneUiGreen : oneUiAmber,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _isPaused ? 'Protection Paused' : 'Quick Pause',
+                        style: TextStyle(
+                          color: colorScheme.onSurface,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        _isPaused
+                            ? '${(_pausedRemainingSeconds / 60).ceil()}m remaining'
+                            : 'Temporarily suspend app locks',
+                        style: TextStyle(
+                          color: colorScheme.onSurface.withValues(alpha: 0.5),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              Switch(
+                value: _isPaused,
+                onChanged: (_) => _togglePause(15),
+                activeTrackColor: oneUiAmber,
+              ),
+            ],
+          ),
+          if (!_isPaused) ...[
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                _buildPauseTimeButton(5, '5 min'),
+                const SizedBox(width: 8),
+                _buildPauseTimeButton(15, '15 min'),
+                const SizedBox(width: 8),
+                _buildPauseTimeButton(30, '30 min'),
+                const SizedBox(width: 8),
+                _buildPauseTimeButton(60, '1 hour'),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPauseTimeButton(int minutes, String label) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Expanded(
+      child: InkWell(
+        onTap: () => _togglePause(minutes),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E2028) : const Color(0xFFEFF2F8),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildSettingTile({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required bool showDivider,
-    required VoidCallback onTap,
-    required ColorScheme colorScheme,
-  }) {
-    return Column(
-      children: [
-        InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(32),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
+  /// Authentication & Timeout Card
+  Widget _buildAuthCard() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final colorScheme = theme.colorScheme;
+
+    String timeoutLabel = 'Immediately';
+    for (final opt in _relockOptions) {
+      if (opt['value'] == _relockTimeout) {
+        timeoutLabel = opt['label'] as String;
+        break;
+      }
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(
+          color: isDark ? const Color(0xFF262832) : const Color(0xFFE4E7EE),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          // Biometric Unlock
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
             child: Row(
               children: [
                 Container(
-                  width: 44,
-                  height: 44,
+                  width: 40,
+                  height: 40,
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFF007AFF).withValues(alpha: 0.12),
+                    color: oneUiBlue.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(icon, color: const Color(0xFF007AFF), size: 22),
+                  child: const Icon(Icons.fingerprint_rounded, color: oneUiBlue, size: 22),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title,
-                        style: TextStyle(color: colorScheme.onSurface, fontSize: 16, fontWeight: FontWeight.w500)),
-                      const SizedBox(height: 2),
-                      Text(subtitle,
-                        style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.4), fontSize: 12)),
+                      Text(
+                        'Biometric Authentication',
+                        style: TextStyle(
+                          color: colorScheme.onSurface,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        'Unlock with Fingerprint or Face',
+                        style: TextStyle(
+                          color: colorScheme.onSurface.withValues(alpha: 0.5),
+                          fontSize: 12,
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                Icon(Icons.arrow_forward_ios_rounded, color: colorScheme.onSurface.withValues(alpha: 0.24), size: 14),
+                Switch(
+                  value: _biometricEnabled,
+                  onChanged: _setBiometric,
+                  activeTrackColor: oneUiBlue,
+                ),
               ],
             ),
           ),
-        ),
-        if (showDivider)
-          Padding(
-            padding: const EdgeInsets.only(left: 80, right: 20),
-            child: Divider(
-              height: 1,
-              color: colorScheme.onSurface.withValues(alpha: 0.05),
+          Divider(
+            height: 1,
+            thickness: 0.8,
+            color: colorScheme.onSurface.withValues(alpha: 0.08),
+            indent: 72,
+            endIndent: 18,
+          ),
+          // Relock Timeout Picker
+          InkWell(
+            onTap: _showRelockPicker,
+            borderRadius: BorderRadius.circular(20),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF6C5CE7).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.timer_rounded, color: Color(0xFF6C5CE7), size: 22),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Relock Timer',
+                          style: TextStyle(
+                            color: colorScheme.onSurface,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          timeoutLabel,
+                          style: TextStyle(
+                            color: oneUiBlue,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    color: colorScheme.onSurface.withValues(alpha: 0.3),
+                    size: 16,
+                  ),
+                ],
+              ),
             ),
           ),
-      ],
+        ],
+      ),
+    );
+  }
+
+  /// System Permissions Card
+  Widget _buildPermissionsCard() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(
+          color: isDark ? const Color(0xFF262832) : const Color(0xFFE4E7EE),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          _buildPermissionItem(
+            'Usage Data Access',
+            'Required for Gov & Banking Safe mode',
+            _usageStatsGranted,
+            () => PlatformChannelService.openUsageStatsSettings(),
+          ),
+          const Divider(height: 1, thickness: 0.8, indent: 20, endIndent: 20),
+          _buildPermissionItem(
+            'Draw Over Other Apps',
+            'Required for instant lock screen curtain',
+            _overlayGranted,
+            () => PlatformChannelService.openOverlaySettings(),
+          ),
+          const Divider(height: 1, thickness: 0.8, indent: 20, endIndent: 20),
+          _buildPermissionItem(
+            'Battery Optimization Exemption',
+            'Prevents Samsung OS from killing service',
+            _batteryOptimized,
+            () => PlatformChannelService.openBatteryOptimizationSettings(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPermissionItem(
+    String title,
+    String subtitle,
+    bool isGranted,
+    VoidCallback onTap,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return ListTile(
+      onTap: onTap,
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+      subtitle: Text(subtitle, style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.5), fontSize: 11)),
+      trailing: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: (isGranted ? oneUiGreen : oneUiAmber).withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          isGranted ? 'GRANTED' : 'GRANT',
+          style: TextStyle(
+            color: isGranted ? oneUiGreen : oneUiAmber,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Security Assurance & Privacy Card
+  Widget _buildSecurityAssuranceCard() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(
+          color: isDark ? const Color(0xFF262832) : const Color(0xFFE4E7EE),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.verified_rounded, color: oneUiBlue, size: 22),
+              const SizedBox(width: 10),
+              Text(
+                'Play Protect & Samsung Knox Safe',
+                style: TextStyle(
+                  color: colorScheme.onSurface,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '• Threat Warning Eliminated: canRetrieveWindowContent is permanently disabled.\n'
+            '• 100% Offline: Zero INTERNET permissions declared in AndroidManifest.\n'
+            '• Local Security: All PIN hashes stored strictly on your device.',
+            style: TextStyle(
+              color: colorScheme.onSurface.withValues(alpha: 0.7),
+              fontSize: 12,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Privix v$_appVersion • Samsung One UI 9 Edition',
+            style: TextStyle(
+              color: colorScheme.onSurface.withValues(alpha: 0.4),
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(left: 12, bottom: 2),
+      child: Text(
+        title,
+        style: TextStyle(
+          color: colorScheme.onSurface.withValues(alpha: 0.5),
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.6,
+        ),
+      ),
     );
   }
 }
