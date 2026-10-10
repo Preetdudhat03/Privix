@@ -115,7 +115,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _showRelockPicker() {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     showModalBottomSheet(
       context: context,
