@@ -378,4 +378,11 @@ class MainActivity : FlutterFragmentActivity() {
         val hashBytes = digest.digest(pin.toByteArray())
         return hashBytes.joinToString("") { "%02x".format(it) }
     }
+
+    override fun onResume() {
+        super.onResume()
+        if (Settings.canDrawOverlays(this)) {
+            CurtainManager.init(applicationContext)
+        }
+    }
 }
