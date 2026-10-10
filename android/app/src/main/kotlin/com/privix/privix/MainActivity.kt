@@ -46,6 +46,11 @@ class MainActivity : FlutterFragmentActivity() {
 
         lockPrefs = LockPreferences(this)
 
+        // Automatically start ForegroundService if in Usage Access mode
+        if (lockPrefs.getEngineMode() == LockPreferences.ENGINE_USAGE_STATS && isUsageStatsPermissionGranted()) {
+            AppLockForegroundService.start(this)
+        }
+
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
 
