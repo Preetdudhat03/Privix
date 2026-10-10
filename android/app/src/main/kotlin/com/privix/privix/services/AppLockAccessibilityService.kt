@@ -137,9 +137,13 @@ class AppLockAccessibilityService : AccessibilityService() {
         val isAppSessionUnlocked = LockSessionManager.isAppUnlocked(eventPackage) || lockPrefs.isAppCurrentlyUnlocked(eventPackage)
 
         if (isLockedApp && !isAppSessionUnlocked && eventPackage != "com.privix.privix") {
-            // Trigger 0ms instant black curtain protection
+            // Trigger 0ms instant black curtain protection and launch auth screen immediately
             LockSessionManager.onProtectedAppDetected(eventPackage)
             CurtainManager.show(this)
+            showAuthScreen(eventPackage)
+            lastForegroundPackage = eventPackage
+            lastTriggeredPackage = eventPackage
+            lastTriggerTime = System.currentTimeMillis()
         }
 
         // Debounce window evaluation
