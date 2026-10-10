@@ -27,7 +27,6 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
   final _searchController = TextEditingController();
 
   static const Color oneUiBlue = Color(0xFF1E6FFE);
-  static const Color oneUiGreen = Color(0xFF28C76F);
 
   // Known sensitive apps to suggest for locking
   static const _sensitiveKeywords = [
