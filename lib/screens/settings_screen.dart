@@ -118,65 +118,70 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: theme.colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
-      builder: (context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 44,
-              height: 4,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 18),
-            Text(
-              'Relock Timeout',
-              style: TextStyle(
-                color: theme.colorScheme.onSurface,
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 12),
-            ..._relockOptions.map((option) {
-              final value = option['value'] as int;
-              final isSelected = _relockTimeout == value;
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Material(
-                  color: isSelected
-                      ? oneUiBlue.withValues(alpha: 0.1)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(16),
-                  child: ListTile(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    title: Text(
-                    option['label'] as String,
-                    style: TextStyle(
-                      color: isSelected ? oneUiBlue : theme.colorScheme.onSurface,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                    ),
-                  ),
-                  trailing: isSelected
-                      ? const Icon(Icons.check_circle_rounded, color: oneUiBlue, size: 22)
-                      : null,
-                  onTap: () {
-                    _setRelockTimeout(value);
-                    Navigator.pop(context);
-                  },
+      builder: (context) => SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 44,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-            );
-            }),
-            const SizedBox(height: 16),
-          ],
+              const SizedBox(height: 16),
+              Text(
+                'Relock Timeout',
+                style: TextStyle(
+                  color: theme.colorScheme.onSurface,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ..._relockOptions.map((option) {
+                final value = option['value'] as int;
+                final isSelected = _relockTimeout == value;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Material(
+                    color: isSelected
+                        ? oneUiBlue.withValues(alpha: 0.1)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(16),
+                    child: ListTile(
+                      dense: true,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      title: Text(
+                        option['label'] as String,
+                        style: TextStyle(
+                          color: isSelected ? oneUiBlue : theme.colorScheme.onSurface,
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                        ),
+                      ),
+                      trailing: isSelected
+                          ? const Icon(Icons.check_circle_rounded, color: oneUiBlue, size: 20)
+                          : null,
+                      onTap: () {
+                        _setRelockTimeout(value);
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ),
         ),
       ),
     );
