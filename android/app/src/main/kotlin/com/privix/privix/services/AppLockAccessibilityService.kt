@@ -84,12 +84,18 @@ class AppLockAccessibilityService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null || event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
+        if (lockPrefs.isPaused()) return
+        if (lockPrefs.getEngineMode() != LockPreferences.ENGINE_ACCESSIBILITY) return
 
         val eventPackage = event.packageName?.toString() ?: return
         val className = event.className?.toString() ?: "Unknown"
         
         val windowInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            event.source?.window
+            try {
+                event.source?.window
+            } catch (e: Exception) {
+                null
+            }
         } else {
             null
         }
@@ -268,39 +274,53 @@ class AppLockAccessibilityService : AccessibilityService() {
 
     private fun getTopPackageName(): String? {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            val windowList = windows
-            if (!windowList.isNullOrEmpty()) {
-                for (i in windowList.size - 1 downTo 0) {
-                    val window = windowList[i]
-                    if (window.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_APPLICATION && window.isFocused) {
-                        return window.root?.packageName?.toString()
+            try {
+                val windowList = windows
+                if (!windowList.isNullOrEmpty()) {
+                    for (i in windowList.size - 1 downTo 0) {
+                        val window = windowList[i]
+                        if (window.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_APPLICATION && window.isFocused) {
+                            val pkg = try { window.root?.packageName?.toString() } catch (e: Exception) { null }
+                            if (pkg != null) return pkg
+                        }
                     }
-                }
-                
-                for (i in windowList.size - 1 downTo 0) {
-                    val window = windowList[i]
-                    if (window.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_APPLICATION) {
-                        val pkg = window.root?.packageName?.toString()
-                        if (pkg != null && WindowClassifier.classify(pkg) != WindowCategory.HOME_LAUNCHER) {
-                            return pkg
+                    
+                    for (i in windowList.size - 1 downTo 0) {
+                        val window = windowList[i]
+                        if (window.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_APPLICATION) {
+                            val pkg = try { window.root?.packageName?.toString() } catch (e: Exception) { null }
+                            if (pkg != null && WindowClassifier.classify(pkg) != WindowCategory.HOME_LAUNCHER) {
+                                return pkg
+                            }
                         }
                     }
                 }
+            } catch (e: Exception) {
+                // Windows inspection unavailable without full window content retrieval
             }
         }
-        return rootInActiveWindow?.packageName?.toString()
+        return try {
+            rootInActiveWindow?.packageName?.toString()
+        } catch (e: Exception) {
+            null
+        }
     }
     
     private fun isPackageTrulyFocused(pkgToCheck: String): Boolean {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            val windowList = windows
-            if (!windowList.isNullOrEmpty()) {
-                for (i in windowList.size - 1 downTo 0) {
-                    val window = windowList[i]
-                    if (window.isFocused) {
-                        return window.root?.packageName?.toString() == pkgToCheck
+            try {
+                val windowList = windows
+                if (!windowList.isNullOrEmpty()) {
+                    for (i in windowList.size - 1 downTo 0) {
+                        val window = windowList[i]
+                        if (window.isFocused) {
+                            val rootPkg = try { window.root?.packageName?.toString() } catch (e: Exception) { null }
+                            return rootPkg == null || rootPkg == pkgToCheck
+                        }
                     }
                 }
+            } catch (e: Exception) {
+                return true
             }
         }
         return true

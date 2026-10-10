@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="accessibility_service_description">Privix App Lock monitors which app is in the foreground to protect your locked apps with a PIN or biometric lock screen.</string>
+    <string name="accessibility_service_description">Privix monitors app foreground changes locally to lock protected apps. Privix does NOT read screen content, text, passwords, or personal data, and requires zero network access.</string>
 </resources>

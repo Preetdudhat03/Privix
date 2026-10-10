@@ -19,8 +19,11 @@ import android.view.accessibility.AccessibilityManager
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import android.app.AppOpsManager
+import android.os.Process
 import com.privix.privix.services.LockPreferences
 import com.privix.privix.services.AppLockAccessibilityService
+import com.privix.privix.services.AppLockForegroundService
 import java.io.ByteArrayOutputStream
 import java.security.MessageDigest
 
@@ -142,6 +145,10 @@ class MainActivity : FlutterFragmentActivity() {
                     result.success(isAccessibilityServiceEnabled())
                 }
 
+                "checkUsageStatsPermission" -> {
+                    result.success(isUsageStatsPermissionGranted())
+                }
+
                 "checkOverlayPermission" -> {
                     result.success(Settings.canDrawOverlays(this))
                 }
@@ -154,6 +161,13 @@ class MainActivity : FlutterFragmentActivity() {
                 // ─── Open Settings ───────────────────────────────────
                 "openAccessibilitySettings" -> {
                     val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    startActivity(intent)
+                    result.success(true)
+                }
+
+                "openUsageStatsSettings" -> {
+                    val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     startActivity(intent)
                     result.success(true)
@@ -173,9 +187,52 @@ class MainActivity : FlutterFragmentActivity() {
                     result.success(true)
                 }
 
+                // ─── Detection Engine & Service Control ───────────────
+                "getEngineMode" -> {
+                    result.success(lockPrefs.getEngineMode())
+                }
+
+                "setEngineMode" -> {
+                    val mode = call.argument<String>("mode") ?: LockPreferences.ENGINE_USAGE_STATS
+                    lockPrefs.setEngineMode(mode)
+                    if (mode == LockPreferences.ENGINE_USAGE_STATS) {
+                        if (isUsageStatsPermissionGranted()) {
+                            AppLockForegroundService.start(this)
+                        }
+                    } else {
+                        AppLockForegroundService.stop(this)
+                    }
+                    result.success(true)
+                }
+
+                "pauseProtection" -> {
+                    val minutes = call.argument<Int>("minutes") ?: 15
+                    lockPrefs.pauseForMinutes(minutes)
+                    result.success(true)
+                }
+
+                "resumeProtection" -> {
+                    lockPrefs.resumeProtection()
+                    result.success(true)
+                }
+
+                "isProtectionPaused" -> {
+                    result.success(lockPrefs.isPaused())
+                }
+
+                "getPausedRemainingSeconds" -> {
+                    result.success(lockPrefs.getPausedRemainingSeconds())
+                }
+
                 // ─── Service Status ──────────────────────────────────
                 "isServiceRunning" -> {
-                    result.success(AppLockAccessibilityService.isRunning)
+                    val mode = lockPrefs.getEngineMode()
+                    val running = if (mode == LockPreferences.ENGINE_USAGE_STATS) {
+                        AppLockForegroundService.isRunning
+                    } else {
+                        AppLockAccessibilityService.isRunning
+                    }
+                    result.success(running)
                 }
 
                 else -> result.notImplemented()

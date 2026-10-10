@@ -6,9 +6,8 @@ import android.content.SharedPreferences
 /**
  * Shared preferences bridge between Flutter (via platform channel) and native services.
  * 
- * WHY: The AccessibilityService runs in a separate context from Flutter. 
- * It cannot access flutter_secure_storage or Flutter's SharedPreferences.
- * This class provides a shared data store readable by both sides.
+ * WHY: Both AccessibilityService and ForegroundService run in native Android contexts.
+ * This class provides a shared data store readable and writable by both Flutter and native layers.
  */
 class LockPreferences(context: Context) {
 
@@ -21,6 +20,12 @@ class LockPreferences(context: Context) {
         private const val KEY_RELOCK_TIMEOUT = "relock_timeout_ms"
         private const val KEY_UNLOCKED_APPS = "unlocked_apps"
         private const val KEY_PIN_SET = "pin_set"
+        private const val KEY_ENGINE_MODE = "engine_mode"
+        private const val KEY_PAUSED_UNTIL = "paused_until_timestamp"
+
+        // Engine mode constants
+        const val ENGINE_USAGE_STATS = "usage_stats"
+        const val ENGINE_ACCESSIBILITY = "accessibility"
 
         // Relock timeout constants (milliseconds)
         const val RELOCK_IMMEDIATELY = 0L
@@ -33,6 +38,46 @@ class LockPreferences(context: Context) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
+    // --- Engine Mode ---
+
+    fun getEngineMode(): String {
+        return prefs.getString(KEY_ENGINE_MODE, ENGINE_USAGE_STATS) ?: ENGINE_USAGE_STATS
+    }
+
+    fun setEngineMode(mode: String) {
+        prefs.edit().putString(KEY_ENGINE_MODE, mode).apply()
+    }
+
+    // --- Temporary Pause Protection ---
+
+    fun pauseForMinutes(minutes: Int) {
+        val until = System.currentTimeMillis() + (minutes * 60 * 1000L)
+        prefs.edit().putLong(KEY_PAUSED_UNTIL, until).apply()
+        CurtainManager.hide("ProtectionPaused")
+    }
+
+    fun resumeProtection() {
+        prefs.edit().remove(KEY_PAUSED_UNTIL).apply()
+    }
+
+    fun isPaused(): Boolean {
+        val until = prefs.getLong(KEY_PAUSED_UNTIL, 0L)
+        if (until == 0L) return false
+        val now = System.currentTimeMillis()
+        if (now >= until) {
+            resumeProtection()
+            return false
+        }
+        return true
+    }
+
+    fun getPausedRemainingSeconds(): Long {
+        val until = prefs.getLong(KEY_PAUSED_UNTIL, 0L)
+        if (until == 0L) return 0L
+        val remaining = (until - System.currentTimeMillis()) / 1000L
+        return if (remaining > 0) remaining else 0L
+    }
+
     // --- Locked Apps ---
 
     fun getLockedApps(): Set<String> {
@@ -44,6 +89,7 @@ class LockPreferences(context: Context) {
     }
 
     fun isAppLocked(packageName: String): Boolean {
+        if (isPaused()) return false
         return getLockedApps().contains(packageName)
     }
 
@@ -97,6 +143,8 @@ class LockPreferences(context: Context) {
     }
 
     fun isAppCurrentlyUnlocked(packageName: String): Boolean {
+        if (isPaused()) return true
+
         if (LockSessionManager.isAppUnlocked(packageName)) {
             return true
         }
