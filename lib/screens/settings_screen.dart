@@ -28,7 +28,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   static const Color oneUiBlue = Color(0xFF1E6FFE);
   static const Color oneUiGreen = Color(0xFF28C76F);
   static const Color oneUiAmber = Color(0xFFFF9F43);
-  static const Color oneUiRed = Color(0xFFFF495C);
 
   static const _relockOptions = [
     {'label': 'Immediately (0 seconds)', 'value': 0},
