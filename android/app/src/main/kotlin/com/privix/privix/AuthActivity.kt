@@ -46,6 +46,10 @@ class AuthActivity : AppCompatActivity() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
             window.attributes.layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
         }
+
+        window.decorView.setOnClickListener {
+            targetPackage?.let { promptBiometricAuth(it) }
+        }
         
         handleIntent(intent)
     }
