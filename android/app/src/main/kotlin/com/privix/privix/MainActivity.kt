@@ -24,6 +24,7 @@ import android.os.Process
 import com.privix.privix.services.LockPreferences
 import com.privix.privix.services.AppLockAccessibilityService
 import com.privix.privix.services.AppLockForegroundService
+import com.privix.privix.services.CurtainManager
 import java.io.ByteArrayOutputStream
 import java.security.MessageDigest
 
