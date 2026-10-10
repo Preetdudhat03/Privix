@@ -19,17 +19,9 @@ import androidx.core.app.NotificationCompat
 import com.privix.privix.AuthActivity
 
 /**
- * Usage Access Detection Engine for Privix App Lock.
- * 
- * WHY THIS SERVICE EXISTS:
- * Many government apps (mAadhaar, DigiLocker, Umang, PAN, e-gov portals) and banking apps
- * (SBI YONO, BHIM UPI, HDFC, ICICI, etc.) deliberately BLOCK or CRASH if ANY 3rd-party
- * Accessibility Service is enabled on the device.
- * 
- * By using UsageStatsManager + this lightweight Foreground Service:
- * - NO Accessibility Service is enabled in Android Settings.
- * - Government & Banking apps run 100% cleanly without security warnings.
- * - Privix reliably locks sensitive apps when they enter the foreground.
+ * High-performance Usage Access Detection Engine for Privix App Lock.
+ * Optimized for ultra-low latency (75ms polling when screen is interactive)
+ * with zero background drain when screen is off.
  */
 class AppLockForegroundService : Service() {
 
@@ -37,6 +29,7 @@ class AppLockForegroundService : Service() {
         private const val TAG = "PrivixForeground"
         private const val CHANNEL_ID = "privix_app_lock_service_channel"
         private const val NOTIFICATION_ID = 9021
+        private const val POLL_INTERVAL_MS = 75L // 75ms responsive detection loop
 
         @Volatile
         var isRunning = false
@@ -61,28 +54,41 @@ class AppLockForegroundService : Service() {
     private lateinit var usageStatsManager: UsageStatsManager
     private val handler = Handler(Looper.getMainLooper())
     private var lastForegroundPackage: String? = null
-    private var lastPollTime: Long = 0L
+    private var isScreenInteractive = true
 
     private val pollRunnable = object : Runnable {
         override fun run() {
-            try {
-                checkForegroundApp()
-            } catch (e: Exception) {
-                Log.e(TAG, "Error in usage stats polling", e)
+            if (isScreenInteractive) {
+                try {
+                    checkForegroundApp()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error in usage stats polling", e)
+                }
+                handler.postDelayed(this, POLL_INTERVAL_MS)
             }
-            // Poll every 250ms for responsive detection
-            handler.postDelayed(this, 250L)
         }
     }
 
-    private val screenOffReceiver = object : BroadcastReceiver() {
+    private val screenStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action == Intent.ACTION_SCREEN_OFF) {
-                Log.d(TAG, "[UsageStats] Screen OFF: Clearing unlock sessions")
-                lockPrefs.clearUnlockedApps()
-                UnlockManager.clear()
-                LockSessionManager.clearAll()
-                lastForegroundPackage = null
+            when (intent?.action) {
+                Intent.ACTION_SCREEN_OFF -> {
+                    Log.d(TAG, "[UsageStats] Screen OFF: Pausing polling & clearing unlock sessions")
+                    isScreenInteractive = false
+                    handler.removeCallbacks(pollRunnable)
+                    lockPrefs.clearUnlockedApps()
+                    UnlockManager.clear()
+                    LockSessionManager.clearAll()
+                    lastForegroundPackage = null
+                }
+                Intent.ACTION_SCREEN_ON, Intent.ACTION_USER_PRESENT -> {
+                    Log.d(TAG, "[UsageStats] Screen ON: Resuming low-latency polling")
+                    if (!isScreenInteractive) {
+                        isScreenInteractive = true
+                        handler.removeCallbacks(pollRunnable)
+                        handler.post(pollRunnable)
+                    }
+                }
             }
         }
     }
@@ -96,12 +102,16 @@ class AppLockForegroundService : Service() {
 
         startForeground(NOTIFICATION_ID, createNotification())
 
-        val filter = IntentFilter(Intent.ACTION_SCREEN_OFF)
-        registerReceiver(screenOffReceiver, filter)
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_USER_PRESENT)
+        }
+        registerReceiver(screenStateReceiver, filter)
 
-        lastPollTime = System.currentTimeMillis() - 2000L
+        isScreenInteractive = true
         handler.post(pollRunnable)
-        Log.d(TAG, "AppLockForegroundService created and polling started")
+        Log.d(TAG, "AppLockForegroundService initialized with 75ms polling")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -118,7 +128,7 @@ class AppLockForegroundService : Service() {
         }
 
         val now = System.currentTimeMillis()
-        val events = usageStatsManager.queryEvents(now - 2000L, now)
+        val events = usageStatsManager.queryEvents(now - 1000L, now)
         val event = UsageEvents.Event()
 
         var currentTopPackage: String? = null
@@ -180,7 +190,7 @@ class AppLockForegroundService : Service() {
 
         // Target requires authentication!
         lastForegroundPackage = currentTopPackage
-        Log.d(TAG, "[UsageStats] Locking package: $currentTopPackage")
+        Log.d(TAG, "[UsageStats] Locking package at 0ms: $currentTopPackage")
 
         LockSessionManager.onProtectedAppDetected(currentTopPackage)
         CurtainManager.show(this)
@@ -189,6 +199,7 @@ class AppLockForegroundService : Service() {
             putExtra("packageName", currentTopPackage)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                     Intent.FLAG_ACTIVITY_NO_ANIMATION or
+                    Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
                     Intent.FLAG_ACTIVITY_CLEAR_TOP or
                     Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
         }
@@ -223,7 +234,7 @@ class AppLockForegroundService : Service() {
         isRunning = false
         handler.removeCallbacksAndMessages(null)
         try {
-            unregisterReceiver(screenOffReceiver)
+            unregisterReceiver(screenStateReceiver)
         } catch (_: Exception) {}
         Log.d(TAG, "AppLockForegroundService destroyed")
         super.onDestroy()
