@@ -172,7 +172,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Navigator.pop(context);
                   },
                 ),
-              );
+              ),
+            );
             }),
             const SizedBox(height: 16),
           ],
