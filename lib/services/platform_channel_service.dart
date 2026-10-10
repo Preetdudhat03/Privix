@@ -93,17 +93,22 @@ class PlatformChannelService {
 
   /// Check if our AccessibilityService is enabled.
   static Future<bool> checkAccessibilityPermission() async {
-    return await _channel.invokeMethod('checkAccessibilityPermission');
+    return (await _channel.invokeMethod('checkAccessibilityPermission')) ?? false;
+  }
+
+  /// Check if Usage Stats Access is granted (Gov & Banking safe).
+  static Future<bool> checkUsageStatsPermission() async {
+    return (await _channel.invokeMethod('checkUsageStatsPermission')) ?? false;
   }
 
   /// Check if we have draw-over-other-apps permission.
   static Future<bool> checkOverlayPermission() async {
-    return await _channel.invokeMethod('checkOverlayPermission');
+    return (await _channel.invokeMethod('checkOverlayPermission')) ?? false;
   }
 
   /// Check if battery optimization is disabled for us.
   static Future<bool> checkBatteryOptimization() async {
-    return await _channel.invokeMethod('checkBatteryOptimization');
+    return (await _channel.invokeMethod('checkBatteryOptimization')) ?? false;
   }
 
   // ─── Open Settings ───────────────────────────────────
@@ -111,6 +116,11 @@ class PlatformChannelService {
   /// Open Android Accessibility Settings.
   static Future<void> openAccessibilitySettings() async {
     await _channel.invokeMethod('openAccessibilitySettings');
+  }
+
+  /// Open Android Usage Access Settings.
+  static Future<void> openUsageStatsSettings() async {
+    await _channel.invokeMethod('openUsageStatsSettings');
   }
 
   /// Open Draw Over Other Apps settings for our app.
@@ -123,10 +133,44 @@ class PlatformChannelService {
     await _channel.invokeMethod('openBatteryOptimizationSettings');
   }
 
+  // ─── Engine Mode & Pause Controls ─────────────────────
+
+  /// Get current detection engine ('usage_stats' or 'accessibility').
+  static Future<String> getEngineMode() async {
+    final mode = await _channel.invokeMethod('getEngineMode');
+    return mode as String? ?? 'usage_stats';
+  }
+
+  /// Set detection engine ('usage_stats' or 'accessibility').
+  static Future<bool> setEngineMode(String mode) async {
+    return (await _channel.invokeMethod('setEngineMode', {'mode': mode})) ?? true;
+  }
+
+  /// Temporarily pause protection for specified minutes.
+  static Future<bool> pauseProtection({int minutes = 15}) async {
+    return (await _channel.invokeMethod('pauseProtection', {'minutes': minutes})) ?? true;
+  }
+
+  /// Resume protection immediately.
+  static Future<bool> resumeProtection() async {
+    return (await _channel.invokeMethod('resumeProtection')) ?? true;
+  }
+
+  /// Check if protection is currently paused.
+  static Future<bool> isProtectionPaused() async {
+    return (await _channel.invokeMethod('isProtectionPaused')) ?? false;
+  }
+
+  /// Get remaining paused seconds.
+  static Future<int> getPausedRemainingSeconds() async {
+    final sec = await _channel.invokeMethod('getPausedRemainingSeconds');
+    return (sec as num?)?.toInt() ?? 0;
+  }
+
   // ─── Service Status ──────────────────────────────────
 
-  /// Check if the accessibility service is currently running.
+  /// Check if active lock service is running.
   static Future<bool> isServiceRunning() async {
-    return await _channel.invokeMethod('isServiceRunning');
+    return (await _channel.invokeMethod('isServiceRunning')) ?? false;
   }
 }
