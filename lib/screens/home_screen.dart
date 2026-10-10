@@ -253,7 +253,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         children: [
                           // 1. One UI 9 Device Care Security Ring Card
                           _buildDeviceCareCard(),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 16),
+
+                          // Instant Shield Warning Banner (Visible if Draw Over Apps is missing)
+                          if (!_overlayEnabled) ...[
+                            _buildOverlayPermissionWarningBanner(),
+                            const SizedBox(height: 16),
+                          ],
 
                           // 2. Government & Banking App Safe Engine Switcher
                           _buildGovBankingCompatibilityCard(),
