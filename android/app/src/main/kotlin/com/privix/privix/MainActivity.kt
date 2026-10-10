@@ -82,7 +82,9 @@ class MainActivity : FlutterFragmentActivity() {
                 "saveLockedApps" -> {
                     val apps = call.argument<List<String>>("apps")
                     if (apps != null) {
-                        lockPrefs.setLockedApps(apps.toSet())
+                        val set = apps.toSet()
+                        lockPrefs.setLockedApps(set)
+                        AppLockAccessibilityService.refreshLockedApps(set)
                         result.success(true)
                     } else {
                         result.error("INVALID_ARGS", "apps list is required", null)
@@ -180,10 +182,22 @@ class MainActivity : FlutterFragmentActivity() {
                 }
 
                 "openOverlaySettings" -> {
-                    val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    startActivity(intent)
-                    result.success(true)
+                    try {
+                        val intent = Intent(
+                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            Uri.parse("package:$packageName")
+                        ).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        startActivity(intent)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        val fallback = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        startActivity(fallback)
+                        result.success(true)
+                    }
                 }
 
                 "openBatteryOptimizationSettings" -> {
