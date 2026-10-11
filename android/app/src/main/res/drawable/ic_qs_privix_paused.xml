@@ -1,20 +1,12 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="512"
-    android:viewportHeight="512">
-    <!-- Stylized 'P' Padlock Monogram Loop -->
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="?android:attr/colorControlNormal">
+    <!-- Solid Shield Silhouette with Pause Bars Cutout -->
     <path
-        android:pathData="M 176,395 V 185 C 176,138 212,100 256,100 C 300,100 336,138 336,185 C 336,232 300,270 256,270 H 176"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="52"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"/>
-
-    <!-- Pause Indicator Bars -->
-    <path
-        android:pathData="M 248,326 V 382 M 288,326 V 382"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="36"
-        android:strokeLineCap="round"/>
+        android:fillType="evenOdd"
+        android:fillColor="#FFFFFF"
+        android:pathData="M12,2 L4,5 v6.09 c0,5.05 3.41,9.76 8,10.91 c4.59,-1.15 8,-5.86 8,-10.91 V5 l-8,-3 z m-2.5,6 h2 v6 h-2 V8 z m3.5,0 h2 v6 h-2 V8 z"/>
 </vector>
