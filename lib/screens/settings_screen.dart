@@ -81,12 +81,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _setEngineMode(String mode) async {
-    HapticFeedback.mediumImpact();
-    await StorageService.setEngineMode(mode);
-    setState(() => _engineMode = mode);
-    await _loadSettings();
-  }
 
   Future<void> _setBiometric(bool enabled) async {
     HapticFeedback.lightImpact();
