@@ -16,7 +16,8 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
-import android.util.Log
+import android.content.ComponentName
+import android.service.quicksettings.TileService
 import androidx.core.app.NotificationCompat
 import com.privix.privix.AuthActivity
 
