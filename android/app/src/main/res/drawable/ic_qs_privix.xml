@@ -1,0 +1,21 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <!-- Stylized 'P' Padlock Monogram Loop -->
+    <path
+        android:pathData="M 176,395 V 185 C 176,138 212,100 256,100 C 300,100 336,138 336,185 C 336,232 300,270 256,270 H 176"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="52"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"/>
+
+    <!-- Verification Checkmark / Protection Active -->
+    <path
+        android:pathData="M 232,342 L 266,376 L 344,296"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="42"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"/>
+</vector>
