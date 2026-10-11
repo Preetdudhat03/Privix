@@ -133,11 +133,10 @@ class AuthActivity : AppCompatActivity() {
         super.onResume()
         isResumedActive = true
         
-        val pkg = targetPackage
-        if (pkg != null && !LockSessionManager.isAppUnlocked(pkg)) {
-            // Re-assert zero-latency curtain overlay for unauthenticated user
-            CurtainManager.show(this)
-            Log.d(TAG, "[PrivixLock] AuthActivity onResume for UNAUTHENTICATED package ($pkg). Curtain remains VISIBLE.")
+        // Once AuthActivity is drawn, its solid black window covers the locked app.
+        // Dismiss the curtain overlay window so Android does not post the overlay notification.
+        window.decorView.post {
+            CurtainManager.hide("AuthActivityRendered")
         }
     }
 
