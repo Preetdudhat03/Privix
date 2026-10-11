@@ -132,29 +132,25 @@ class AuthActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         isResumedActive = true
-        // AuthActivity's own window is solid black (0ms coverage). We can release the overlay window.
-        CurtainManager.hide("AuthActivityResumed")
+        
+        val pkg = targetPackage
+        if (pkg != null && !LockSessionManager.isAppUnlocked(pkg)) {
+            // Re-assert zero-latency curtain overlay for unauthenticated user
+            CurtainManager.show(this)
+            Log.d(TAG, "[PrivixLock] AuthActivity onResume for UNAUTHENTICATED package ($pkg). Curtain remains VISIBLE.")
+        }
     }
 
     override fun onPause() {
         isResumedActive = false
         super.onPause()
-    }
-
-    override fun onStop() {
-        super.onStop()
+        
+        // Ensure curtain remains attached if user is unauthenticated
         val pkg = targetPackage
         if (pkg != null && !LockSessionManager.isAppUnlocked(pkg)) {
-            Log.d(TAG, "[PrivixLock] User navigated away from locked app ($pkg). Dismissing AuthActivity.")
-            CurtainManager.hide("AuthActivityOnStop")
-            LockSessionManager.invalidateSession("User navigated away")
-            finish()
+            CurtainManager.show(this)
+            Log.d(TAG, "[PrivixLock] AuthActivity onPause while UNAUTHENTICATED ($pkg). Overlay preserved.")
         }
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        CurtainManager.hide("AuthActivityDestroyed")
     }
 
     private fun exitToHome() {
