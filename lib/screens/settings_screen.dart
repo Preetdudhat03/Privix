@@ -21,7 +21,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _usageStatsGranted = false;
   bool _overlayGranted = false;
   bool _batteryOptimized = false;
-  String _appVersion = '2.2.1';
+  String _appVersion = '2.2.2';
   bool _isLoading = true;
 
   static const Color oneUiBlue = Color(0xFF1E6FFE);
@@ -56,7 +56,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         PlatformChannelService.checkBatteryOptimization(),
       ]);
 
-      String version = '2.2.1';
+      String version = '2.2.2';
       try {
         final packageInfo = await PackageInfo.fromPlatform();
         version = packageInfo.version;
