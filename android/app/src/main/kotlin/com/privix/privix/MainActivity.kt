@@ -239,11 +239,13 @@ class MainActivity : FlutterFragmentActivity() {
                 "pauseProtection" -> {
                     val minutes = call.argument<Int>("minutes") ?: 15
                     lockPrefs.pauseForMinutes(minutes)
+                    requestTileUpdate()
                     result.success(true)
                 }
 
                 "resumeProtection" -> {
                     lockPrefs.resumeProtection()
+                    requestTileUpdate()
                     result.success(true)
                 }
 
