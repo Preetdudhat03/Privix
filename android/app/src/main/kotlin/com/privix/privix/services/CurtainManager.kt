@@ -21,6 +21,10 @@ object CurtainManager {
     private var layoutParams: WindowManager.LayoutParams? = null
     private val mainHandler = Handler(Looper.getMainLooper())
 
+    private val autoDismissRunnable = Runnable {
+        hide("SafetyTimeout")
+    }
+
     val isVisible: Boolean
         get() = curtainView?.visibility == View.VISIBLE
 
@@ -81,6 +85,7 @@ object CurtainManager {
 
         mainHandler.post {
             try {
+                mainHandler.removeCallbacks(autoDismissRunnable)
                 curtainView?.let { view ->
                     if (view.visibility != View.VISIBLE) {
                         layoutParams?.flags = WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
@@ -94,6 +99,8 @@ object CurtainManager {
                         Log.d(TAG, "Curtain toggled: VISIBLE (0ms shield applied)")
                     }
                 }
+                // Safety timeout: automatically hide overlay after 2500ms so it can NEVER linger
+                mainHandler.postDelayed(autoDismissRunnable, 2500L)
             } catch (e: Exception) {
                 Log.e(TAG, "Error showing curtain", e)
             }
@@ -102,6 +109,7 @@ object CurtainManager {
 
     fun hide(reason: String = "Unknown") {
         mainHandler.post {
+            mainHandler.removeCallbacks(autoDismissRunnable)
             try {
                 curtainView?.let { view ->
                     if (view.visibility != View.GONE) {
