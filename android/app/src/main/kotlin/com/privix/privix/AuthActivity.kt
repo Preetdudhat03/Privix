@@ -144,13 +144,6 @@ class AuthActivity : AppCompatActivity() {
     override fun onPause() {
         isResumedActive = false
         super.onPause()
-        
-        // Ensure curtain remains attached if user is unauthenticated
-        val pkg = targetPackage
-        if (pkg != null && !LockSessionManager.isAppUnlocked(pkg)) {
-            CurtainManager.show(this)
-            Log.d(TAG, "[PrivixLock] AuthActivity onPause while UNAUTHENTICATED ($pkg). Overlay preserved.")
-        }
     }
 
     private fun exitToHome() {
