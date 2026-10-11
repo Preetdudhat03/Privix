@@ -21,9 +21,11 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import android.app.AppOpsManager
 import android.os.Process
+import android.service.quicksettings.TileService
 import com.privix.privix.services.LockPreferences
 import com.privix.privix.services.AppLockForegroundService
 import com.privix.privix.services.CurtainManager
+import com.privix.privix.services.PrivixTileService
 import java.io.ByteArrayOutputStream
 import java.security.MessageDigest
 
@@ -41,10 +43,24 @@ class MainActivity : FlutterFragmentActivity() {
 
     private lateinit var lockPrefs: LockPreferences
 
+    private fun requestTileUpdate() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            try {
+                TileService.requestListeningState(
+                    this,
+                    ComponentName(this, PrivixTileService::class.java)
+                )
+            } catch (_: Exception) {}
+        }
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
         lockPrefs = LockPreferences(this)
+
+        // Force Quick Settings Tile to refresh its icon and state
+        requestTileUpdate()
 
         // Automatically start ForegroundService if in Usage Access mode
         if (lockPrefs.getEngineMode() == LockPreferences.ENGINE_USAGE_STATS && isUsageStatsPermissionGranted()) {
