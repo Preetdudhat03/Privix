@@ -1,12 +1,21 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24"
+    android:viewportWidth="512"
+    android:viewportHeight="512"
     android:tint="?android:attr/colorControlNormal">
-    <!-- Solid Shield Silhouette with Pause Bars Cutout -->
+    <!-- Continuous loop forming 'P' and padlock (Privix Brand Monogram) -->
     <path
-        android:fillType="evenOdd"
-        android:fillColor="#FFFFFF"
-        android:pathData="M12,2 L4,5 v6.09 c0,5.05 3.41,9.76 8,10.91 c4.59,-1.15 8,-5.86 8,-10.91 V5 l-8,-3 z m-2.5,6 h2 v6 h-2 V8 z m3.5,0 h2 v6 h-2 V8 z"/>
+        android:pathData="M 176,401 V 191 C 176,147 212,111 256,111 C 300,111 336,147 336,191 C 336,235 300,271 256,271 H 176"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="46"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"/>
+
+    <!-- Pause Indicator Bars -->
+    <path
+        android:pathData="M 246,315 V 365 M 286,315 V 365"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="32"
+        android:strokeLineCap="round"/>
 </vector>
