@@ -119,6 +119,16 @@ class AppLockForegroundService : Service() {
 
         isScreenInteractive = true
         handler.post(pollRunnable)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            try {
+                TileService.requestListeningState(
+                    this,
+                    ComponentName(this, PrivixTileService::class.java)
+                )
+            } catch (_: Exception) {}
+        }
+
         Log.d(TAG, "AppLockForegroundService initialized with 75ms polling")
     }
 
