@@ -183,6 +183,10 @@ class AppLockForegroundService : Service() {
                 UnlockManager.forgetApp(lastForegroundPackage!!)
                 lockPrefs.removeAppUnlocked(lastForegroundPackage!!)
             }
+            if (CurtainManager.isVisible) {
+                CurtainManager.hide("HomeLauncherResumed")
+            }
+            LockSessionManager.invalidateSession("User navigated to home")
             lastForegroundPackage = currentTopPackage
             return
         }
@@ -194,9 +198,10 @@ class AppLockForegroundService : Service() {
         val isLocked = lockPrefs.isAppLocked(currentTopPackage)
         if (!isLocked) {
             lastForegroundPackage = currentTopPackage
-            if (CurtainManager.isVisible && LockSessionManager.pendingLockedPackage == null) {
+            if (CurtainManager.isVisible) {
                 CurtainManager.hide("UnlockedAppResumed")
             }
+            LockSessionManager.invalidateSession("User on unlocked app")
             return
         }
 
