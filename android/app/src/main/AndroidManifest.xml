@@ -52,7 +52,7 @@
         <!-- Samsung One UI Quick Settings Tile -->
         <service
             android:name=".services.PrivixTileService"
-            android:icon="@mipmap/ic_launcher"
+            android:icon="@drawable/ic_qs_privix"
             android:label="Privix Lock"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
             android:exported="true">
