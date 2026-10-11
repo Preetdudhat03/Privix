@@ -1,9 +1,11 @@
 package com.privix.privix.services
 
+import android.graphics.drawable.Icon
 import android.os.Build
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import androidx.annotation.RequiresApi
+import com.privix.privix.R
 
 /**
  * Samsung One UI / Android Quick Settings Tile.
@@ -12,6 +14,11 @@ import androidx.annotation.RequiresApi
  */
 @RequiresApi(Build.VERSION_CODES.N)
 class PrivixTileService : TileService() {
+
+    override fun onTileAdded() {
+        super.onTileAdded()
+        updateTileState()
+    }
 
     override fun onStartListening() {
         super.onStartListening()
@@ -37,6 +44,7 @@ class PrivixTileService : TileService() {
         if (prefs.isPaused()) {
             tile.state = Tile.STATE_INACTIVE
             tile.label = "Privix (Paused)"
+            tile.icon = Icon.createWithResource(this, R.drawable.ic_qs_privix_paused)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 val remainingMins = (prefs.getPausedRemainingSeconds() / 60) + 1
                 tile.subtitle = "Paused for ${remainingMins}m"
@@ -44,12 +52,9 @@ class PrivixTileService : TileService() {
         } else {
             tile.state = Tile.STATE_ACTIVE
             tile.label = "Privix Lock"
+            tile.icon = Icon.createWithResource(this, R.drawable.ic_qs_privix)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                tile.subtitle = if (prefs.getEngineMode() == LockPreferences.ENGINE_USAGE_STATS) {
-                    "Usage Mode"
-                } else {
-                    "0ms Mode"
-                }
+                tile.subtitle = "Protected"
             }
         }
         tile.updateTile()
