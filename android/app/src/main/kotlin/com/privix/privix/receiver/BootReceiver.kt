@@ -26,6 +26,7 @@ class BootReceiver : BroadcastReceiver() {
             context?.let {
                 val lockPrefs = LockPreferences(it)
                 lockPrefs.clearUnlockedApps()
+                com.privix.privix.services.AppLockForegroundService.start(it)
             }
         }
     }

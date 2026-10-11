@@ -105,13 +105,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  bool get _isEnginePermissionGranted {
-    if (_engineMode == 'usage_stats') {
-      return _usageStatsEnabled;
-    } else {
-      return _accessibilityEnabled;
-    }
-  }
+  bool get _isEnginePermissionGranted => _usageStatsEnabled;
 
   bool get _isProtectionActive =>
       !_isPaused && _isEnginePermissionGranted && _overlayEnabled && _lockedAppCount > 0;
@@ -297,7 +291,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       icon = Icons.pause_circle_filled_rounded;
     } else if (_isProtectionActive) {
       pillColor = oneUiGreen;
-      label = _engineMode == 'usage_stats' ? 'Active • Gov Safe' : 'Active • 0ms';
+      label = 'Active • Protected';
       icon = Icons.check_circle_rounded;
     } else {
       pillColor = oneUiAmber;
@@ -495,20 +489,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final colorScheme = theme.colorScheme;
-    final isUsageMode = _engineMode == 'usage_stats';
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: isUsageMode
-            ? (isDark ? const Color(0xFF0F1E19) : const Color(0xFFEBFBF3))
-            : theme.colorScheme.surface,
+        color: isDark ? const Color(0xFF0F1E19) : const Color(0xFFEBFBF3),
         borderRadius: BorderRadius.circular(28),
         border: Border.all(
-          color: isUsageMode
-              ? oneUiGreen.withValues(alpha: 0.4)
-              : (isDark ? const Color(0xFF262832) : const Color(0xFFE4E7EE)),
+          color: oneUiGreen.withValues(alpha: 0.4),
           width: 1.5,
         ),
       ),
@@ -520,14 +509,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: (isUsageMode ? oneUiGreen : oneUiBlue).withValues(alpha: 0.15),
+                  color: oneUiGreen.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  isUsageMode
-                      ? Icons.account_balance_rounded
-                      : Icons.flash_on_rounded,
-                  color: isUsageMode ? oneUiGreen : oneUiBlue,
+                child: const Icon(
+                  Icons.verified_user_rounded,
+                  color: oneUiGreen,
                   size: 24,
                 ),
               ),
@@ -537,7 +524,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Government & Banking App Mode',
+                      'Government & Banking App Safe',
                       style: TextStyle(
                         color: colorScheme.onSurface,
                         fontSize: 16,
@@ -546,14 +533,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      isUsageMode
-                          ? 'Zero Accessibility Conflict (mAadhaar, SBI Safe)'
-                          : 'High-speed 0ms Accessibility Mode',
+                      'Zero Accessibility Conflict (mAadhaar, SBI Safe)',
                       style: TextStyle(
-                        color: (isUsageMode ? oneUiGreen : colorScheme.onSurface)
-                            .withValues(alpha: 0.8),
+                        color: oneUiGreen.withValues(alpha: 0.9),
                         fontSize: 12,
-                        fontWeight: isUsageMode ? FontWeight.w600 : FontWeight.w400,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
@@ -563,118 +547,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
           const SizedBox(height: 14),
           Text(
-            isUsageMode
-                ? 'Usage Access Mode is active. Accessibility Service remains completely OFF in system settings, allowing mAadhaar, DigiLocker, Umang, and UPI banking apps to open without security warnings!'
-                : 'Government or banking apps giving security warnings? Switch to Usage Access Mode below to disable Accessibility completely while keeping Privix active.',
+            'Powered by the native Usage Access Engine. Accessibility Service is completely removed, allowing mAadhaar, DigiLocker, Umang, and banking apps to operate with zero security blocks or warnings.',
             style: TextStyle(
-              color: colorScheme.onSurface.withValues(alpha: 0.7),
+              color: colorScheme.onSurface.withValues(alpha: 0.75),
               fontSize: 13,
               height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 16),
-          // Segmented Engine Selector in One UI 9 Style
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF14151B) : const Color(0xFFE2E6EE),
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => _toggleEngineMode('usage_stats'),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                      decoration: BoxDecoration(
-                        color: isUsageMode
-                            ? (isDark ? const Color(0xFF20232D) : Colors.white)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: isUsageMode
-                            ? [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.1),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                )
-                              ]
-                            : null,
-                      ),
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.verified_user_rounded,
-                              size: 16,
-                              color: isUsageMode ? oneUiGreen : colorScheme.onSurface.withValues(alpha: 0.5),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Usage Access (Safe)',
-                              style: TextStyle(
-                                color: isUsageMode ? colorScheme.onSurface : colorScheme.onSurface.withValues(alpha: 0.5),
-                                fontSize: 12,
-                                fontWeight: isUsageMode ? FontWeight.w700 : FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => _toggleEngineMode('accessibility'),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                      decoration: BoxDecoration(
-                        color: !isUsageMode
-                            ? (isDark ? const Color(0xFF20232D) : Colors.white)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: !isUsageMode
-                            ? [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.1),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                )
-                              ]
-                            : null,
-                      ),
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.bolt_rounded,
-                              size: 16,
-                              color: !isUsageMode ? oneUiBlue : colorScheme.onSurface.withValues(alpha: 0.5),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Accessibility (0ms)',
-                              style: TextStyle(
-                                color: !isUsageMode ? colorScheme.onSurface : colorScheme.onSurface.withValues(alpha: 0.5),
-                                fontSize: 12,
-                                fontWeight: !isUsageMode ? FontWeight.w700 : FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
             ),
           ),
         ],
@@ -686,7 +563,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget _buildSafeguardsIslandCard() {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final isUsageMode = _engineMode == 'usage_stats';
 
     return Container(
       decoration: BoxDecoration(
@@ -700,26 +576,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       child: Column(
         children: [
           // Primary engine permission tile
-          if (isUsageMode)
-            _buildPermissionTile(
-              icon: Icons.data_usage_rounded,
-              title: 'Usage Access Permission',
-              subtitle: 'Monitors foreground apps without triggering Accessibility blocks',
-              isEnabled: _usageStatsEnabled,
-              isRecommended: true,
-              showDivider: true,
-              onTap: () => PlatformChannelService.openUsageStatsSettings(),
-            )
-          else
-            _buildPermissionTile(
-              icon: Icons.accessibility_new_rounded,
-              title: 'Accessibility Service',
-              subtitle: 'Zero-latency window detection (Safe: No screen reading)',
-              isEnabled: _accessibilityEnabled,
-              isRecommended: false,
-              showDivider: true,
-              onTap: () => PlatformChannelService.openAccessibilitySettings(),
-            ),
+          _buildPermissionTile(
+            icon: Icons.data_usage_rounded,
+            title: 'Usage Access Permission',
+            subtitle: 'Monitors foreground apps without triggering Accessibility blocks',
+            isEnabled: _usageStatsEnabled,
+            isRecommended: true,
+            showDivider: true,
+            onTap: () => PlatformChannelService.openUsageStatsSettings(),
+          ),
 
           // Draw Over Apps
           _buildPermissionTile(

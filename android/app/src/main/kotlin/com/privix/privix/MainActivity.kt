@@ -22,7 +22,6 @@ import io.flutter.plugin.common.MethodChannel
 import android.app.AppOpsManager
 import android.os.Process
 import com.privix.privix.services.LockPreferences
-import com.privix.privix.services.AppLockAccessibilityService
 import com.privix.privix.services.AppLockForegroundService
 import com.privix.privix.services.CurtainManager
 import java.io.ByteArrayOutputStream
@@ -84,7 +83,6 @@ class MainActivity : FlutterFragmentActivity() {
                     if (apps != null) {
                         val set = apps.toSet()
                         lockPrefs.setLockedApps(set)
-                        AppLockAccessibilityService.refreshLockedApps(set)
                         result.success(true)
                     } else {
                         result.error("INVALID_ARGS", "apps list is required", null)
@@ -150,7 +148,7 @@ class MainActivity : FlutterFragmentActivity() {
 
                 // ─── Permission Checks ───────────────────────────────
                 "checkAccessibilityPermission" -> {
-                    result.success(isAccessibilityServiceEnabled())
+                    result.success(false)
                 }
 
                 "checkUsageStatsPermission" -> {
@@ -168,10 +166,7 @@ class MainActivity : FlutterFragmentActivity() {
 
                 // ─── Open Settings ───────────────────────────────────
                 "openAccessibilitySettings" -> {
-                    val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    startActivity(intent)
-                    result.success(true)
+                    result.success(false)
                 }
 
                 "openUsageStatsSettings" -> {
@@ -246,13 +241,7 @@ class MainActivity : FlutterFragmentActivity() {
 
                 // ─── Service Status ──────────────────────────────────
                 "isServiceRunning" -> {
-                    val mode = lockPrefs.getEngineMode()
-                    val running = if (mode == LockPreferences.ENGINE_USAGE_STATS) {
-                        AppLockForegroundService.isRunning
-                    } else {
-                        AppLockAccessibilityService.isRunning
-                    }
-                    result.success(running)
+                    result.success(AppLockForegroundService.isRunning)
                 }
 
                 else -> result.notImplemented()
@@ -343,23 +332,6 @@ class MainActivity : FlutterFragmentActivity() {
             bitmap.compress(Bitmap.CompressFormat.PNG, 85, stream)
         }
         return stream.toByteArray()
-    }
-
-
-    /**
-     * Check if our AccessibilityService is currently enabled.
-     */
-    private fun isAccessibilityServiceEnabled(): Boolean {
-        val am = getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
-        val enabledServices = am.getEnabledAccessibilityServiceList(
-            AccessibilityServiceInfo.FEEDBACK_GENERIC
-        )
-        val myService = ComponentName(this, AppLockAccessibilityService::class.java)
-        return enabledServices.any {
-            it.resolveInfo.serviceInfo.let { si ->
-                ComponentName(si.packageName, si.name) == myService
-            }
-        }
     }
 
     private fun isUsageStatsPermissionGranted(): Boolean {

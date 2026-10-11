@@ -19,10 +19,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isPaused = false;
   int _pausedRemainingSeconds = 0;
   bool _usageStatsGranted = false;
-  bool _accessibilityGranted = false;
   bool _overlayGranted = false;
   bool _batteryOptimized = false;
-  String _appVersion = '2.1.3';
+  String _appVersion = '2.2.1';
   bool _isLoading = true;
 
   static const Color oneUiBlue = Color(0xFF1E6FFE);
@@ -53,12 +52,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         PlatformChannelService.isProtectionPaused(),
         PlatformChannelService.getPausedRemainingSeconds(),
         PlatformChannelService.checkUsageStatsPermission(),
-        PlatformChannelService.checkAccessibilityPermission(),
         PlatformChannelService.checkOverlayPermission(),
         PlatformChannelService.checkBatteryOptimization(),
       ]);
 
-      String version = '2.1.3';
+      String version = '2.2.1';
       try {
         final packageInfo = await PackageInfo.fromPlatform();
         version = packageInfo.version;
@@ -72,9 +70,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _isPaused = results[3] as bool;
           _pausedRemainingSeconds = results[4] as int;
           _usageStatsGranted = results[5] as bool;
-          _accessibilityGranted = results[6] as bool;
-          _overlayGranted = results[7] as bool;
-          _batteryOptimized = results[8] as bool;
+          _overlayGranted = results[6] as bool;
+          _batteryOptimized = results[7] as bool;
           _appVersion = version;
           _isLoading = false;
         });
@@ -347,40 +344,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            'Government & banking applications check Android Accessibility Services and block access if ANY third-party service is enabled.\n\n'
-            'With Usage Access Mode, Privix does NOT use Accessibility at all. You can turn Accessibility Service completely OFF in Android Settings, and all government apps will work 100% smoothly!',
+            'Government and banking applications (such as mAadhaar, DigiLocker, and SBI YONO) block devices with active Accessibility Services.\n\n'
+            'Privix operates 100% without Accessibility Services. It uses native Usage Access and a lightweight foreground service, allowing your banking and identity apps to function completely unimpeded!',
             style: TextStyle(
               color: colorScheme.onSurface.withValues(alpha: 0.75),
               fontSize: 13,
               height: 1.4,
             ),
           ),
-          if (_accessibilityGranted) ...[
-            const SizedBox(height: 14),
-            OutlinedButton.icon(
-              onPressed: () => PlatformChannelService.openAccessibilitySettings(),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: oneUiAmber,
-                side: BorderSide(color: oneUiAmber.withValues(alpha: 0.5)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              ),
-              icon: const Icon(Icons.settings_power_rounded, size: 18),
-              label: const Text('Turn OFF Accessibility in Settings'),
-            ),
-          ],
         ],
       ),
     );
   }
 
-  /// Detection Engine Switcher
+  /// Detection Engine Card
   Widget _buildDetectionEngineCard() {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final colorScheme = theme.colorScheme;
-    final isUsageMode = _engineMode == 'usage_stats';
 
     return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(26),
@@ -389,95 +373,52 @@ class _SettingsScreenState extends State<SettingsScreen> {
           width: 1,
         ),
       ),
-      child: Column(
+      child: Row(
         children: [
-          InkWell(
-            onTap: () => _setEngineMode('usage_stats'),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-              child: Row(
-                children: [
-                  Icon(
-                    isUsageMode ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded,
-                    color: isUsageMode ? oneUiGreen : colorScheme.onSurface.withValues(alpha: 0.4),
-                    size: 22,
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Text(
-                              'Usage Access Engine',
-                              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: oneUiGreen.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: const Text(
-                                'RECOMMENDED',
-                                style: TextStyle(color: oneUiGreen, fontSize: 9, fontWeight: FontWeight.w800),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          'Zero Accessibility conflicts. Safe with all government and banking apps.',
-                          style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.55), fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: oneUiGreen.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(
+              Icons.bolt_rounded,
+              color: oneUiGreen,
+              size: 24,
             ),
           ),
-          Divider(
-            height: 1,
-            thickness: 0.8,
-            color: colorScheme.onSurface.withValues(alpha: 0.08),
-            indent: 20,
-            endIndent: 20,
-          ),
-          InkWell(
-            onTap: () => _setEngineMode('accessibility'),
-            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(26)),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-              child: Row(
-                children: [
-                  Icon(
-                    !isUsageMode ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded,
-                    color: !isUsageMode ? oneUiBlue : colorScheme.onSurface.withValues(alpha: 0.4),
-                    size: 22,
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Accessibility Engine (0ms)',
-                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          'Instant curtain overlay. May trigger security blocks in government/banking apps.',
-                          style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.55), fontSize: 12),
-                        ),
-                      ],
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Text(
+                      'Usage Access Engine',
+                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                     ),
-                  ),
-                ],
-              ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: oneUiGreen.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text(
+                        'ACTIVE • 100% SAFE',
+                        style: TextStyle(color: oneUiGreen, fontSize: 9, fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'High-speed foreground monitoring. Zero accessibility permissions, zero Play Protect warnings, safe with banking apps.',
+                  style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.55), fontSize: 12),
+                ),
+              ],
             ),
           ),
         ],
