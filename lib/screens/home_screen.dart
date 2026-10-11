@@ -120,11 +120,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return score;
   }
 
-  Future<void> _toggleEngineMode(String mode) async {
-    HapticFeedback.mediumImpact();
-    await StorageService.setEngineMode(mode);
-    await _loadStatus();
-  }
 
   Future<void> _togglePause(int minutes) async {
     HapticFeedback.mediumImpact();
