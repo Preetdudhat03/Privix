@@ -296,6 +296,9 @@ class AppLockForegroundService : Service() {
     }
 
     override fun onDestroy() {
+        if (instance == this) {
+            instance = null
+        }
         isRunning = false
         handler.removeCallbacksAndMessages(null)
         try {
