@@ -42,6 +42,10 @@ class AppLockAccessibilityService : AccessibilityService() {
         fun refreshLockedApps(apps: Set<String>) {
             lockedAppsCache = apps
         }
+
+        fun resetLastForegroundPackage() {
+            lastForegroundPackage = null
+        }
     }
 
     private lateinit var lockPrefs: LockPreferences
