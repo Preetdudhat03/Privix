@@ -39,6 +39,13 @@ class AppLockForegroundService : Service() {
         var isRunning = false
             private set
 
+        @Volatile
+        private var instance: AppLockForegroundService? = null
+
+        fun resetLastForegroundPackage() {
+            instance?.lastForegroundPackage = null
+        }
+
         fun start(context: Context) {
             val intent = Intent(context, AppLockForegroundService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
