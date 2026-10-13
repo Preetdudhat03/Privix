@@ -109,6 +109,7 @@ class AppLockForegroundService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
         lockPrefs = LockPreferences(this)
         usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         CurtainManager.init(this)
