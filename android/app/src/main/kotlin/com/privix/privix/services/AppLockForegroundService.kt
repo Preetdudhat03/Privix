@@ -200,7 +200,12 @@ class AppLockForegroundService : Service() {
         }
 
         if (currentTopPackage == lastForegroundPackage) {
-            return
+            val isLocked = lockPrefs.isAppLocked(currentTopPackage)
+            val isUnlocked = LockSessionManager.isAppUnlocked(currentTopPackage) ||
+                    lockPrefs.isAppCurrentlyUnlocked(currentTopPackage)
+            if (!isLocked || isUnlocked || AuthActivity.isResumedActive) {
+                return
+            }
         }
 
         val isLocked = lockPrefs.isAppLocked(currentTopPackage)
