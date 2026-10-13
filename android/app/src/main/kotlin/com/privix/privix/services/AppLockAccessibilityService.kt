@@ -230,9 +230,13 @@ class AppLockAccessibilityService : AccessibilityService() {
             return
         }
 
-        // Skip redundant same-package evaluation
+        // Skip redundant same-package evaluation ONLY if not an unauthenticated locked app
         if (packageName == previousPackage) {
-            return
+            val isLocked = lockedAppsCache.contains(packageName) || lockPrefs.isAppLocked(packageName)
+            val isUnlocked = LockSessionManager.isAppUnlocked(packageName) || lockPrefs.isAppCurrentlyUnlocked(packageName)
+            if (!isLocked || isUnlocked || AuthActivity.isResumedActive) {
+                return
+            }
         }
 
         // ─── CHECK IF TARGET REQUIRES LOCKING ──────────────────────────────
