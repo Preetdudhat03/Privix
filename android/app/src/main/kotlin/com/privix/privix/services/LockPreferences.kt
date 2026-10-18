@@ -1,7 +1,13 @@
 package com.privix.privix.services
 
+import android.app.AlarmManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
+import android.os.Build
+import android.util.Log
+import com.privix.privix.receiver.PauseTimeoutReceiver
 
 /**
  * Shared preferences bridge between Flutter (via platform channel) and native services.
@@ -9,7 +15,7 @@ import android.content.SharedPreferences
  * WHY: Both AccessibilityService and ForegroundService run in native Android contexts.
  * This class provides a shared data store readable and writable by both Flutter and native layers.
  */
-class LockPreferences(context: Context) {
+class LockPreferences(private val context: Context) {
 
     companion object {
         private const val PREFS_NAME = "privix_lock_prefs"
@@ -54,10 +60,14 @@ class LockPreferences(context: Context) {
         val until = System.currentTimeMillis() + (minutes * 60 * 1000L)
         prefs.edit().putLong(KEY_PAUSED_UNTIL, until).apply()
         CurtainManager.hide("ProtectionPaused")
+        schedulePauseAlarm(until)
+        PrivixTileService.requestUpdate(context)
     }
 
     fun resumeProtection() {
         prefs.edit().remove(KEY_PAUSED_UNTIL).apply()
+        cancelPauseAlarm()
+        PrivixTileService.requestUpdate(context)
     }
 
     fun isPaused(): Boolean {
@@ -76,6 +86,57 @@ class LockPreferences(context: Context) {
         if (until == 0L) return 0L
         val remaining = (until - System.currentTimeMillis()) / 1000L
         return if (remaining > 0) remaining else 0L
+    }
+
+    private fun schedulePauseAlarm(until: Long) {
+        try {
+            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
+            val intent = Intent(context, PauseTimeoutReceiver::class.java).apply {
+                action = PauseTimeoutReceiver.ACTION_PAUSE_TIMEOUT
+            }
+            val pendingIntent = PendingIntent.getBroadcast(
+                context,
+                2026,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (alarmManager.canScheduleExactAlarms()) {
+                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, until, pendingIntent)
+                } else {
+                    alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, until, pendingIntent)
+                }
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, until, pendingIntent)
+            } else {
+                alarmManager.set(AlarmManager.RTC_WAKEUP, until, pendingIntent)
+            }
+            Log.d("LockPreferences", "[PrivixLock] Pause alarm scheduled for $until")
+        } catch (e: Exception) {
+            Log.e("LockPreferences", "Failed to schedule pause alarm", e)
+        }
+    }
+
+    private fun cancelPauseAlarm() {
+        try {
+            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
+            val intent = Intent(context, PauseTimeoutReceiver::class.java).apply {
+                action = PauseTimeoutReceiver.ACTION_PAUSE_TIMEOUT
+            }
+            val pendingIntent = PendingIntent.getBroadcast(
+                context,
+                2026,
+                intent,
+                PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+            )
+            if (pendingIntent != null) {
+                alarmManager.cancel(pendingIntent)
+                pendingIntent.cancel()
+                Log.d("LockPreferences", "[PrivixLock] Pause alarm cancelled")
+            }
+        } catch (e: Exception) {
+            Log.e("LockPreferences", "Failed to cancel pause alarm", e)
+        }
     }
 
     // --- Locked Apps ---
