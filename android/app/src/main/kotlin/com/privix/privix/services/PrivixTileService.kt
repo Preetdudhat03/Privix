@@ -1,7 +1,9 @@
 package com.privix.privix.services
 
+import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.Handler
@@ -10,6 +12,7 @@ import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import android.util.Log
 import androidx.annotation.RequiresApi
+import com.privix.privix.AuthActivity
 import com.privix.privix.R
 
 /**
@@ -17,6 +20,7 @@ import com.privix.privix.R
  * Allows user to quickly pause Privix App Lock for 15 minutes (or resume)
  * directly from the notification shade without going into Android Settings.
  * Dynamically counts down remaining pause time (15m, 14m, ... 1m, 45s) and auto-resumes.
+ * Protected: Pausing requires biometric/device credential verification.
  */
 @RequiresApi(Build.VERSION_CODES.N)
 class PrivixTileService : TileService() {
@@ -81,16 +85,42 @@ class PrivixTileService : TileService() {
         super.onClick()
         val prefs = LockPreferences(this)
         if (prefs.isPaused()) {
+            // Resuming protection is always safe to do without authentication
             prefs.resumeProtection()
+            updateTileState()
+            countdownHandler.removeCallbacks(countdownRunnable)
         } else {
-            // Pause for 15 minutes
-            prefs.pauseForMinutes(15)
+            // Pausing protection MUST require authentication (prevents unauthorized bypass)
+            if (isLocked) {
+                unlockAndRun {
+                    launchPauseAuth()
+                }
+            } else {
+                launchPauseAuth()
+            }
         }
-        updateTileState()
+    }
 
-        countdownHandler.removeCallbacks(countdownRunnable)
-        if (prefs.isPaused()) {
-            countdownHandler.postDelayed(countdownRunnable, 1000L)
+    private fun launchPauseAuth() {
+        val pauseIntent = Intent(this, AuthActivity::class.java).apply {
+            putExtra("action", "pause_protection")
+            addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
+            )
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            val pendingIntent = PendingIntent.getActivity(
+                this,
+                1002,
+                pauseIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            startActivityAndCollapse(pendingIntent)
+        } else {
+            @Suppress("DEPRECATION")
+            startActivityAndCollapse(pauseIntent)
         }
     }
 
