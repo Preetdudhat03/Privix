@@ -389,9 +389,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 Row(
                   children: [
-                    const Text(
-                      'Usage Access Engine',
-                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                    Expanded(
+                      child: Text(
+                        'Usage Access Engine',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                      ),
                     ),
                     const SizedBox(width: 8),
                     Container(
