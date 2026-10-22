@@ -15,6 +15,7 @@ import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
 import android.util.Base64
+import android.view.WindowManager
 import android.view.accessibility.AccessibilityManager
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -22,12 +23,17 @@ import io.flutter.plugin.common.MethodChannel
 import android.app.AppOpsManager
 import android.os.Process
 import android.service.quicksettings.TileService
+import androidx.biometric.BiometricPrompt
+import androidx.core.content.ContextCompat
 import com.privix.privix.services.LockPreferences
 import com.privix.privix.services.AppLockForegroundService
 import com.privix.privix.services.CurtainManager
 import com.privix.privix.services.PrivixTileService
 import java.io.ByteArrayOutputStream
 import java.security.MessageDigest
+import java.security.SecureRandom
+import javax.crypto.SecretKeyFactory
+import javax.crypto.spec.PBEKeySpec
 
 /**
  * Main entry point. Registers the platform channel that bridges Flutter ↔ Kotlin.
@@ -56,6 +62,9 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        // Security Hardening: Block screenshots, screen recording, and Recent task snapshot
+        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
 
         lockPrefs = LockPreferences(this)
 
@@ -93,6 +102,45 @@ class MainActivity : FlutterFragmentActivity() {
                     }
                 }
 
+                // ─── App Self-Lock Authentication ─────────────────────
+                "authenticateUser" -> {
+                    val executor = ContextCompat.getMainExecutor(this)
+                    val biometricPrompt = BiometricPrompt(this, executor,
+                        object : BiometricPrompt.AuthenticationCallback() {
+                            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                                super.onAuthenticationError(errorCode, errString)
+                                result.success(false)
+                            }
+                            override fun onAuthenticationSucceeded(authResult: BiometricPrompt.AuthenticationResult) {
+                                super.onAuthenticationSucceeded(authResult)
+                                result.success(true)
+                            }
+                            override fun onAuthenticationFailed() {
+                                super.onAuthenticationFailed()
+                            }
+                        })
+
+                    val promptInfoBuilder = BiometricPrompt.PromptInfo.Builder()
+                        .setTitle("Privix Security")
+                        .setSubtitle("Unlock to access Privix dashboard")
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        promptInfoBuilder.setAllowedAuthenticators(
+                            androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                            androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
+                        )
+                    } else {
+                        @Suppress("DEPRECATION")
+                        promptInfoBuilder.setDeviceCredentialAllowed(true)
+                    }
+
+                    try {
+                        biometricPrompt.authenticate(promptInfoBuilder.build())
+                    } catch (e: Exception) {
+                        result.error("AUTH_ERROR", e.message, null)
+                    }
+                }
+
                 // ─── Locked Apps Management ──────────────────────────
                 "saveLockedApps" -> {
                     val apps = call.argument<List<String>>("apps")
@@ -109,11 +157,11 @@ class MainActivity : FlutterFragmentActivity() {
                     result.success(lockPrefs.getLockedApps().toList())
                 }
 
-                // ─── PIN Management ──────────────────────────────────
+                // ─── PIN Management (Salted PBKDF2) ───────────────────
                 "savePinHash" -> {
                     val pin = call.argument<String>("pin")
                     if (pin != null) {
-                        val hash = hashPin(pin)
+                        val hash = hashPinPbkdf2(pin)
                         lockPrefs.setPinHash(hash, pin.length)
                         result.success(true)
                     } else {
@@ -124,9 +172,27 @@ class MainActivity : FlutterFragmentActivity() {
                 "verifyPin" -> {
                     val pin = call.argument<String>("pin")
                     if (pin != null) {
-                        val inputHash = hashPin(pin)
                         val storedHash = lockPrefs.getPinHash()
-                        result.success(inputHash == storedHash)
+                        if (storedHash == null) {
+                            result.success(false)
+                        } else {
+                            val inputPbkdf2 = hashPinPbkdf2(pin)
+                            val isPbkdf2Valid = MessageDigest.isEqual(inputPbkdf2.toByteArray(), storedHash.toByteArray())
+                            if (isPbkdf2Valid) {
+                                result.success(true)
+                            } else {
+                                // Backward compatibility check for legacy SHA-256
+                                val legacyHash = hashPinLegacy(pin)
+                                val isLegacyValid = MessageDigest.isEqual(legacyHash.toByteArray(), storedHash.toByteArray())
+                                if (isLegacyValid) {
+                                    // Seamlessly upgrade legacy hash to PBKDF2
+                                    lockPrefs.setPinHash(inputPbkdf2, pin.length)
+                                    result.success(true)
+                                } else {
+                                    result.success(false)
+                                }
+                            }
+                        }
                     } else {
                         result.error("INVALID_ARGS", "pin is required", null)
                     }
@@ -224,14 +290,10 @@ class MainActivity : FlutterFragmentActivity() {
                 }
 
                 "setEngineMode" -> {
-                    val mode = call.argument<String>("mode") ?: LockPreferences.ENGINE_USAGE_STATS
-                    lockPrefs.setEngineMode(mode)
-                    if (mode == LockPreferences.ENGINE_USAGE_STATS) {
-                        if (isUsageStatsPermissionGranted()) {
-                            AppLockForegroundService.start(this)
-                        }
-                    } else {
-                        AppLockForegroundService.stop(this)
+                    // Safe guard: Always enforce Usage Access Mode (Gov & Bank Safe)
+                    lockPrefs.setEngineMode(LockPreferences.ENGINE_USAGE_STATS)
+                    if (isUsageStatsPermissionGranted()) {
+                        AppLockForegroundService.start(this)
                     }
                     result.success(true)
                 }
@@ -268,8 +330,8 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     /**
-     * Get all user-installed (non-system) apps with name and package only.
-     * Icons are fetched lazily via getAppIcon to improve loading speed.
+     * Get all user-installed apps and critical system apps (Settings, Play Store, Installer)
+     * with name and package only. Icons are fetched lazily via getAppIcon to improve loading speed.
      */
     private fun getInstalledUserApps(): List<Map<String, Any?>> {
         val pm = packageManager
@@ -282,10 +344,21 @@ class MainActivity : FlutterFragmentActivity() {
             pm.getInstalledApplications(0)
         }
 
+        // Whitelist critical system packages that users MUST be able to lock
+        // to prevent unauthorized uninstallation, data clearing, or permission revocation
+        val protectableSystemPackages = setOf(
+            "com.android.settings",
+            "com.android.vending",
+            "com.google.android.packageinstaller",
+            "com.android.packageinstaller"
+        )
+
         for (appInfo in packages) {
-            // Skip system apps
-            if (appInfo.flags and ApplicationInfo.FLAG_SYSTEM != 0 &&
-                appInfo.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP == 0) {
+            val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM != 0) &&
+                           (appInfo.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP == 0)
+
+            // Skip system apps UNLESS they are critical security control apps
+            if (isSystem && !protectableSystemPackages.contains(appInfo.packageName)) {
                 continue
             }
 
@@ -363,7 +436,28 @@ class MainActivity : FlutterFragmentActivity() {
         return mode == AppOpsManager.MODE_ALLOWED
     }
 
-    private fun hashPin(pin: String): String {
+    private fun getOrCreatePinSalt(): ByteArray {
+        val saltKey = "pin_pbkdf2_salt"
+        val existing = lockPrefs.getPrefs().getString(saltKey, null)
+        if (existing != null) {
+            return Base64.decode(existing, Base64.NO_WRAP)
+        }
+        val salt = ByteArray(16)
+        SecureRandom().nextBytes(salt)
+        val encoded = Base64.encodeToString(salt, Base64.NO_WRAP)
+        lockPrefs.getPrefs().edit().putString(saltKey, encoded).apply()
+        return salt
+    }
+
+    private fun hashPinPbkdf2(pin: String): String {
+        val salt = getOrCreatePinSalt()
+        val spec = PBEKeySpec(pin.toCharArray(), salt, 10000, 256)
+        val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
+        val hash = factory.generateSecret(spec).encoded
+        return hash.joinToString("") { "%02x".format(it) }
+    }
+
+    private fun hashPinLegacy(pin: String): String {
         val digest = MessageDigest.getInstance("SHA-256")
         val hashBytes = digest.digest(pin.toByteArray())
         return hashBytes.joinToString("") { "%02x".format(it) }
