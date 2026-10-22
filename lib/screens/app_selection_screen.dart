@@ -104,11 +104,17 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
 
   void _applyFilters() {
     setState(() {
+      final q = _searchQuery.trim().toLowerCase();
+      final isSearchingGallery = q == 'galary' || q == 'gallary' || q == 'galery';
+
       _filteredApps = _apps.where((app) {
-        // Search query filter
-        final matchesQuery = _searchQuery.isEmpty ||
-            app.appName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-            app.packageName.toLowerCase().contains(_searchQuery.toLowerCase());
+        // Search query filter (with common typo alias for gallery)
+        final name = app.appName.toLowerCase();
+        final pkg = app.packageName.toLowerCase();
+        final matchesQuery = q.isEmpty ||
+            name.contains(q) ||
+            pkg.contains(q) ||
+            (isSearchingGallery && (name.contains('gallery') || pkg.contains('gallery') || name.contains('photo') || pkg.contains('photo')));
 
         if (!matchesQuery) return false;
 
