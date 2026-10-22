@@ -127,6 +127,7 @@ class MainActivity : FlutterFragmentActivity() {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                         promptInfoBuilder.setAllowedAuthenticators(
                             androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                            androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK or
                             androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
                         )
                     } else {
