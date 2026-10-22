@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:local_auth/local_auth.dart';
+import 'pin_verify_screen.dart';
 import '../services/platform_channel_service.dart';
 import '../services/storage_service.dart';
 
@@ -30,8 +32,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _pausedRemainingSeconds = 0;
   bool _isLoading = true;
   Timer? _countdownTimer;
-  bool _isAuthenticated = false;
+
+  // App Self-Lock state
+  bool _isAuthenticated = true;
+  bool _requiresAuth = false;
+  bool _hasPin = false;
   bool _isAuthenticating = false;
+  final LocalAuthentication _localAuth = LocalAuthentication();
 
   // Samsung One UI 9 Palette
   static const Color oneUiBlue = Color(0xFF1E6FFE);
@@ -43,32 +50,105 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _authenticateUser();
+    _checkInitialLockState();
     _startCountdownTimer();
+  }
+
+  Future<void> _checkInitialLockState() async {
+    final hasPin = await StorageService.isPinSet();
+    final isBiometric = await StorageService.isBiometricEnabled();
+    final lockedApps = await StorageService.getLockedApps();
+
+    // Only enforce app self-lock if security has been configured
+    final shouldLock = hasPin || isBiometric || lockedApps.isNotEmpty;
+
+    if (!shouldLock) {
+      if (mounted) {
+        setState(() {
+          _isAuthenticated = true;
+          _requiresAuth = false;
+          _hasPin = hasPin;
+        });
+        _loadStatus();
+      }
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        _isAuthenticated = false;
+        _requiresAuth = true;
+        _hasPin = hasPin;
+      });
+
+      // Prompt authentication after the activity window is fully mounted and focused
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _authenticateUser();
+      });
+    }
   }
 
   Future<void> _authenticateUser() async {
     if (_isAuthenticating) return;
     _isAuthenticating = true;
+
     try {
-      final success = await PlatformChannelService.authenticateUser();
-      if (mounted) {
-        setState(() {
-          _isAuthenticated = success;
-          _isAuthenticating = false;
-        });
-        if (success) {
+      final isSupported = await _localAuth.isDeviceSupported();
+      final canCheck = await _localAuth.canCheckBiometrics;
+
+      if (isSupported || canCheck) {
+        final didAuth = await _localAuth.authenticate(
+          localizedReason: 'Authenticate to access Privix dashboard',
+          options: const AuthenticationOptions(
+            stickyAuth: true,
+            biometricOnly: false,
+          ),
+        );
+
+        if (didAuth && mounted) {
+          setState(() {
+            _isAuthenticated = true;
+          });
           _loadStatus();
+          return;
         }
+      } else if (_hasPin && mounted) {
+        // Biometrics not available on device, fall back to Privix PIN
+        _unlockWithPin();
+        return;
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[Privix] Biometric auth error: $e');
+      if (_hasPin && mounted) {
+        _unlockWithPin();
+      }
+    } finally {
       if (mounted) {
         setState(() {
-          _isAuthenticated = false;
           _isAuthenticating = false;
         });
       }
     }
+  }
+
+  void _unlockWithPin() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PinVerifyScreen(
+          title: 'Unlock Privix',
+          onSuccess: () {
+            Navigator.pop(context);
+            if (mounted) {
+              setState(() {
+                _isAuthenticated = true;
+              });
+              _loadStatus();
+            }
+          },
+        ),
+      ),
+    );
   }
 
   @override
@@ -96,15 +176,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
-      if (mounted) {
+      if (mounted && _requiresAuth) {
         setState(() {
           _isAuthenticated = false;
         });
       }
     } else if (state == AppLifecycleState.resumed) {
-      if (!_isAuthenticated) {
+      if (_requiresAuth && !_isAuthenticated) {
         _authenticateUser();
-      } else {
+      } else if (_isAuthenticated) {
         _loadStatus();
       }
     }
