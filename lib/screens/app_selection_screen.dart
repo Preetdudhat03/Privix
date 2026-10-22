@@ -50,21 +50,20 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
 
   Future<void> _loadApps({bool forceRefresh = false}) async {
     try {
+      // 1. If cache is available, show it immediately for zero-delay rendering
       if (!forceRefresh) {
         final cached = await StorageService.getCachedApps();
-        if (cached.isNotEmpty) {
+        if (cached.isNotEmpty && mounted) {
           final lockedApps = await StorageService.getLockedApps();
           final lockedSet = lockedApps.toSet();
-          
           for (final app in cached) {
             app.isLocked = lockedSet.contains(app.packageName);
           }
-          
           _updateAppState(cached, lockedSet);
-          return;
         }
       }
 
+      // 2. Fetch fresh app list from native (stale-while-revalidate)
       final apps = await PlatformChannelService.getInstalledApps();
       final lockedApps = await StorageService.getLockedApps();
       final lockedSet = lockedApps.toSet();
@@ -74,7 +73,9 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
       }
 
       await StorageService.saveCachedApps(apps);
-      _updateAppState(apps, lockedSet);
+      if (mounted) {
+        _updateAppState(apps, lockedSet);
+      }
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
