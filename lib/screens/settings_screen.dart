@@ -777,12 +777,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               const Icon(Icons.verified_rounded, color: oneUiBlue, size: 22),
               const SizedBox(width: 10),
-              Text(
-                'Play Protect & Samsung Knox Safe',
-                style: TextStyle(
-                  color: colorScheme.onSurface,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
+              Expanded(
+                child: Text(
+                  'Play Protect & Samsung Knox Safe',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: colorScheme.onSurface,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
