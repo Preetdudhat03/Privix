@@ -1144,7 +1144,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     ),
                     icon: const Icon(Icons.fingerprint_rounded, size: 24),
                     label: const Text(
-                      'Unlock Privix',
+                      'Unlock with Biometrics',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -1152,6 +1152,33 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     ),
                   ),
                 ),
+                if (_hasPin) ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: OutlinedButton.icon(
+                      onPressed: _unlockWithPin,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: colorScheme.onSurface,
+                        side: BorderSide(
+                          color: isDark ? const Color(0xFF2A2D38) : const Color(0xFFDCE1EB),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      icon: const Icon(Icons.pin_rounded, size: 22),
+                      label: const Text(
+                        'Unlock with Privix PIN',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 TextButton(
                   onPressed: () => SystemNavigator.pop(),
