@@ -173,6 +173,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final isDark = theme.brightness == Brightness.dark;
     final colorScheme = theme.colorScheme;
 
+    if (!_isAuthenticated) {
+      return _buildLockedGateScreen(theme, isDark, colorScheme);
+    }
+
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: _isLoading
