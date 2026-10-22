@@ -30,6 +30,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _pausedRemainingSeconds = 0;
   bool _isLoading = true;
   Timer? _countdownTimer;
+  bool _isAuthenticated = false;
+  bool _isAuthenticating = false;
 
   // Samsung One UI 9 Palette
   static const Color oneUiBlue = Color(0xFF1E6FFE);
@@ -41,8 +43,32 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _loadStatus();
+    _authenticateUser();
     _startCountdownTimer();
+  }
+
+  Future<void> _authenticateUser() async {
+    if (_isAuthenticating) return;
+    _isAuthenticating = true;
+    try {
+      final success = await PlatformChannelService.authenticateUser();
+      if (mounted) {
+        setState(() {
+          _isAuthenticated = success;
+          _isAuthenticating = false;
+        });
+        if (success) {
+          _loadStatus();
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isAuthenticated = false;
+          _isAuthenticating = false;
+        });
+      }
+    }
   }
 
   @override
@@ -69,8 +95,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _loadStatus();
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
+      if (mounted) {
+        setState(() {
+          _isAuthenticated = false;
+        });
+      }
+    } else if (state == AppLifecycleState.resumed) {
+      if (!_isAuthenticated) {
+        _authenticateUser();
+      } else {
+        _loadStatus();
+      }
     }
   }
 
