@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.view.WindowManager
 import android.window.OnBackInvokedCallback
 import android.window.OnBackInvokedDispatcher
 import androidx.activity.OnBackPressedCallback
@@ -17,6 +18,7 @@ import com.privix.privix.services.AppLockForegroundService
 import com.privix.privix.services.CurtainManager
 import com.privix.privix.services.LockPreferences
 import com.privix.privix.services.LockSessionManager
+import com.privix.privix.services.PrivixTileService
 import com.privix.privix.services.UnlockManager
 
 class AuthActivity : AppCompatActivity() {
@@ -32,6 +34,7 @@ class AuthActivity : AppCompatActivity() {
     private var isAuthSuccessful = false
     private var isBiometricPromptShowing = false
     private var isExiting = false
+    private var isPauseAction = false
     private val mainHandler = Handler(Looper.getMainLooper())
     private var backInvokedCallback: OnBackInvokedCallback? = null
 
@@ -49,15 +52,18 @@ class AuthActivity : AppCompatActivity() {
 
         // Immediately paint window decor solid black
         window.decorView.setBackgroundColor(0xFF000000.toInt())
-        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        
+        // Security Hardening: Block screenshots, screen recording, and recent task preview
+        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         
         // Match CurtainManager layout to prevent any edge flicker revealing the underlying app
         window.addFlags(
-            android.view.WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-            android.view.WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
         )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            window.attributes.layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            window.attributes.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
         }
 
         // Register modern back press callbacks (AndroidX & Android 13+ Predictive Back)
@@ -81,7 +87,11 @@ class AuthActivity : AppCompatActivity() {
 
         window.decorView.setOnClickListener {
             if (!isAuthSuccessful && !isBiometricPromptShowing) {
-                targetPackage?.let { promptBiometricAuth(it) }
+                if (isPauseAction) {
+                    promptBiometricAuthForPause()
+                } else {
+                    targetPackage?.let { promptBiometricAuth(it) }
+                }
             }
         }
         
@@ -95,13 +105,78 @@ class AuthActivity : AppCompatActivity() {
     }
 
     private fun handleIntent(intent: Intent?) {
+        val action = intent?.getStringExtra("action")
+        if (action == "pause_protection") {
+            isPauseAction = true
+            isAuthSuccessful = false
+            Log.d(TAG, "[PrivixLock] AuthActivity launched for pause_protection action")
+            promptBiometricAuthForPause()
+            return
+        }
+
         val pkg = intent?.getStringExtra("packageName") ?: return exitToHome()
         targetPackage = pkg
+        isPauseAction = false
         isAuthSuccessful = false
         LockSessionManager.onProtectedAppDetected(pkg)
         Log.d(TAG, "[PrivixLock] AuthActivity initialized for package: $pkg")
 
         promptBiometricAuth(pkg)
+    }
+
+    private fun promptBiometricAuthForPause() {
+        if (isAuthSuccessful || isBiometricPromptShowing) {
+            return
+        }
+
+        val executor = ContextCompat.getMainExecutor(this)
+        val biometricPrompt = BiometricPrompt(this, executor,
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    super.onAuthenticationError(errorCode, errString)
+                    isBiometricPromptShowing = false
+                    Log.d(TAG, "[PrivixLock] Pause biometric error: $errString ($errorCode)")
+                    finish()
+                }
+
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    super.onAuthenticationSucceeded(result)
+                    isBiometricPromptShowing = false
+                    isAuthSuccessful = true
+                    Log.d(TAG, "[PrivixLock] Pause authentication SUCCEEDED. Pausing for 15 minutes.")
+                    LockPreferences(this@AuthActivity).pauseForMinutes(15)
+                    PrivixTileService.requestUpdate(this@AuthActivity)
+                    finish()
+                }
+
+                override fun onAuthenticationFailed() {
+                    super.onAuthenticationFailed()
+                    Log.d(TAG, "[PrivixLock] Pause authentication failed (wrong biometric/credential)")
+                }
+            })
+
+        val promptInfoBuilder = BiometricPrompt.PromptInfo.Builder()
+            .setTitle("Pause Protection")
+            .setSubtitle("Authenticate to pause Privix App Lock for 15 minutes")
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            promptInfoBuilder.setAllowedAuthenticators(
+                androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG or 
+                androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            promptInfoBuilder.setDeviceCredentialAllowed(true)
+        }
+
+        try {
+            isBiometricPromptShowing = true
+            biometricPrompt.authenticate(promptInfoBuilder.build())
+        } catch (e: Exception) {
+            isBiometricPromptShowing = false
+            Log.e(TAG, "[PrivixLock] Failed to launch BiometricPrompt for pause", e)
+            finish()
+        }
     }
 
     private fun promptBiometricAuth(pkg: String) {
@@ -191,10 +266,14 @@ class AuthActivity : AppCompatActivity() {
         }
 
         // If resuming after System UI interruption and prompt is not showing, re-prompt automatically
-        if (!isAuthSuccessful && !isBiometricPromptShowing && targetPackage != null) {
+        if (!isAuthSuccessful && !isBiometricPromptShowing) {
             mainHandler.postDelayed({
                 if (!isAuthSuccessful && !isBiometricPromptShowing && isResumedActive) {
-                    targetPackage?.let { promptBiometricAuth(it) }
+                    if (isPauseAction) {
+                        promptBiometricAuthForPause()
+                    } else {
+                        targetPackage?.let { promptBiometricAuth(it) }
+                    }
                 }
             }, 100L)
         }
@@ -214,7 +293,7 @@ class AuthActivity : AppCompatActivity() {
         }
 
         // FAIL-SAFE: If destroyed without successful authentication, ensure protected app is never accessible
-        if (!isAuthSuccessful) {
+        if (!isAuthSuccessful && !isPauseAction) {
             val pkg = targetPackage
             if (pkg != null) {
                 LockSessionManager.invalidateSession("AuthActivity destroyed without unlock")
@@ -238,6 +317,11 @@ class AuthActivity : AppCompatActivity() {
     }
 
     private fun exitToHome() {
+        if (isPauseAction) {
+            finish()
+            return
+        }
+
         if (isExiting) return
         isExiting = true
 

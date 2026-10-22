@@ -13,6 +13,7 @@ import android.util.Log
 /**
  * Manages a solid full-screen AMOLED black overlay (the "Curtain") 
  * to instantly cover locked apps with 0ms latency.
+ * Protected with FLAG_SECURE to prevent screenshot / screen-recording exposure.
  */
 object CurtainManager {
     private const val TAG = "CurtainManager"
@@ -58,7 +59,8 @@ object CurtainManager {
                             WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
                             WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED or
                             WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-                            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                            WindowManager.LayoutParams.FLAG_SECURE,
                     PixelFormat.OPAQUE
                 ).apply {
                     gravity = Gravity.CENTER
@@ -90,7 +92,8 @@ object CurtainManager {
                     if (view.visibility != View.VISIBLE) {
                         layoutParams?.flags = WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
-                                WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED
+                                WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED or
+                                WindowManager.LayoutParams.FLAG_SECURE
                         layoutParams?.let { lp -> windowManager?.updateViewLayout(view, lp) }
                         view.visibility = View.VISIBLE
                         view.isFocusable = true
@@ -120,7 +123,8 @@ object CurtainManager {
                                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
                                 WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED or
                                 WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-                                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                                WindowManager.LayoutParams.FLAG_SECURE
                         layoutParams?.let { lp -> windowManager?.updateViewLayout(view, lp) }
                         Log.d(TAG, "Curtain toggled: GONE (Reason: $reason)")
                     }

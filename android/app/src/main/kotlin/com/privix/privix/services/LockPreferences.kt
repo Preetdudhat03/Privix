@@ -44,6 +44,8 @@ class LockPreferences(private val context: Context) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
+    fun getPrefs(): SharedPreferences = prefs
+
     // --- Engine Mode ---
 
     fun getEngineMode(): String {
