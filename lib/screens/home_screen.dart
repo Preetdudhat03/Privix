@@ -487,6 +487,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ),
                   label: Text(
                     _isPaused ? 'Resume Lock' : 'Pause 15m',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
                   ),
                 ),
@@ -508,6 +510,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   icon: const Icon(Icons.add_moderator_rounded, size: 18),
                   label: const Text(
                     'Manage Apps',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
                   ),
                 ),
