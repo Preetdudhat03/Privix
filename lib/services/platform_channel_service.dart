@@ -9,6 +9,18 @@ import '../models/app_info.dart';
 class PlatformChannelService {
   static const _channel = MethodChannel('com.privix.applock/channel');
 
+  // ─── App Self-Lock Authentication ───────────────────
+
+  /// Authenticate user via Biometric or Device PIN/Password (App Self-Lock)
+  static Future<bool> authenticateUser() async {
+    try {
+      final bool? result = await _channel.invokeMethod('authenticateUser');
+      return result ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
   // ─── App Discovery ───────────────────────────────────
 
   /// Get all user-installed apps from the device.
