@@ -384,6 +384,8 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
                                 children: [
                                   Text(
                                     '1-Tap Sensitive App Lock',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                       color: colorScheme.onSurface,
                                       fontSize: 13,
@@ -392,6 +394,8 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
                                   ),
                                   Text(
                                     'Auto-secures WhatsApp, Photos, Finance',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                       color: colorScheme.onSurface.withValues(alpha: 0.6),
                                       fontSize: 11,
