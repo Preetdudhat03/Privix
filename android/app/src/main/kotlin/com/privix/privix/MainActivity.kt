@@ -330,7 +330,7 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     /**
-     * Get all user-installed apps and critical system apps (Settings, Play Store, Installer)
+     * Get all user-installed apps and launchable apps (Gallery, Camera, Settings, etc.)
      * with name and package only. Icons are fetched lazily via getAppIcon to improve loading speed.
      */
     private fun getInstalledUserApps(): List<Map<String, Any?>> {
@@ -344,6 +344,19 @@ class MainActivity : FlutterFragmentActivity() {
             pm.getInstalledApplications(0)
         }
 
+        // Query all packages that have a launcher activity (apps with an icon in home screen/app drawer)
+        val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+        val launcherPackages = try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                pm.queryIntentActivities(launcherIntent, PackageManager.ResolveInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                pm.queryIntentActivities(launcherIntent, 0)
+            }.map { it.activityInfo.packageName }.toSet()
+        } catch (_: Exception) {
+            emptySet()
+        }
+
         // Whitelist critical system packages that users MUST be able to lock
         // to prevent unauthorized uninstallation, data clearing, or permission revocation
         val protectableSystemPackages = setOf(
@@ -354,30 +367,39 @@ class MainActivity : FlutterFragmentActivity() {
         )
 
         for (appInfo in packages) {
-            val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM != 0) &&
-                           (appInfo.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP == 0)
-
-            // Skip system apps UNLESS they are critical security control apps
-            if (isSystem && !protectableSystemPackages.contains(appInfo.packageName)) {
-                continue
-            }
-
             // Skip our own app
             if (appInfo.packageName == packageName) continue
 
+            // Skip disabled apps
+            if (!appInfo.enabled) continue
+
+            val isUserApp = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM == 0) ||
+                            (appInfo.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP != 0)
+            val hasLauncher = launcherPackages.contains(appInfo.packageName)
+            val isProtectableSystem = protectableSystemPackages.contains(appInfo.packageName)
+
+            // Keep user apps, any app with a launcher icon (Samsung Gallery, Photos, Camera, etc.),
+            // and critical system control apps
+            if (!isUserApp && !hasLauncher && !isProtectableSystem) {
+                continue
+            }
+
             try {
                 val appName = pm.getApplicationLabel(appInfo).toString()
-                apps.add(mapOf(
-                    "packageName" to appInfo.packageName,
-                    "appName" to appName
-                ))
+                if (appName.isNotBlank()) {
+                    apps.add(mapOf(
+                        "packageName" to appInfo.packageName,
+                        "appName" to appName
+                    ))
+                }
             } catch (e: Exception) {
                 // Skip apps we can't read
             }
         }
 
-        // Sort alphabetically
-        return apps.sortedBy { (it["appName"] as? String)?.lowercase() }
+        // Deduplicate by packageName and sort alphabetically
+        return apps.distinctBy { it["packageName"] as? String }
+            .sortedBy { (it["appName"] as? String)?.lowercase() }
     }
 
     /**
