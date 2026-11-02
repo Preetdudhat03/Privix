@@ -183,7 +183,16 @@ class AppLockForegroundService : Service() {
         // System UI transitions
         val category = WindowClassifier.classify(currentTopPackage)
         if (category == WindowCategory.SYSTEM_UI) {
+            LockSessionManager.onSystemUiEvent(currentTopPackage)
+            val pendingApp = LockSessionManager.pendingLockedPackage
+            if (pendingApp != null && !LockSessionManager.isAppUnlocked(pendingApp)) {
+                CurtainManager.show(this)
+            }
             return
+        }
+
+        if (LockSessionManager.isSystemUiActive) {
+            LockSessionManager.onReturnFromSystemUi()
         }
 
         if (category == WindowCategory.HOME_LAUNCHER) {
