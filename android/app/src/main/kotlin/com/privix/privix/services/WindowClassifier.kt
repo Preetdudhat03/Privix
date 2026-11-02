@@ -25,8 +25,54 @@ object WindowClassifier {
 
     // Known System UI overlays & system controls (including Samsung One UI specific overlays)
     private val KNOWN_SYSTEM_OVERLAYS = setOf(
-        "com.android.systemui",
+        // Core System UI & Framework
         "android",
+        "com.android.systemui",
+
+        // Permission Controllers (AOSP, Google, Samsung)
+        "com.google.android.permissioncontroller",
+        "com.android.permissioncontroller",
+        "com.samsung.android.permissioncontroller",
+
+        // Storage Access Framework & Document Pickers
+        "com.google.android.documentsui",
+        "com.android.documentsui",
+
+        // Media & Photo Pickers
+        "com.google.android.providers.media.module",
+        "com.android.providers.media.module",
+
+        // Intent Resolvers / Sharesheet / Chooser
+        "com.android.intentresolver",
+        "com.android.internal.app.ResolverActivity",
+
+        // Google Play Services transient dialogs & auth sheets
+        "com.google.android.gms",
+
+        // Credential Manager & System Autofill
+        "com.android.credentialmanager",
+        "com.samsung.android.samsungpassautofill",
+        "com.samsung.android.spay",
+
+        // System Pairing, Bluetooth & Devices
+        "com.android.companiondevicemanager",
+        "com.android.bluetooth",
+
+        // System dialogs & Installers
+        "com.google.android.packageinstaller",
+        "com.android.packageinstaller",
+        "com.android.printspooler",
+        "com.android.captiveportallogin",
+        "com.android.vpndialogs",
+        "com.android.certinstaller",
+        "com.android.settings.intelligence",
+
+        // Phone call UI overlays
+        "com.android.incallui",
+        "com.samsung.android.incallui",
+        "com.samsung.android.app.telephonyui",
+
+        // Samsung One UI overlays & system tools
         "com.samsung.android.app.cocktailbarservice",  // Samsung Edge Panel
         "com.samsung.android.bixby.agent",             // Bixby Overlay
         "com.samsung.android.smartclip",               // Samsung Smart Select
@@ -35,16 +81,16 @@ object WindowClassifier {
         "com.samsung.android.bluetoothtethering",
         "com.android.settings.intelligence",
         "com.samsung.android.app.routines",
-        "com.android.incallui",                        // Phone Call Overlay
-        "com.samsung.android.incallui",
         "com.samsung.android.app.smartcapture",        // Samsung Screenshot Toolbar
         "com.samsung.android.smartcapture",            // Older Samsung Capture UI
         "com.samsung.android.app.screenrecorder",      // Samsung Screen Recorder UI
         "com.samsung.android.selectionservice",        // Samsung Text Selection
+        "com.samsung.android.honeyboard",             // Samsung Keyboard & Clipboard
         "com.samsung.android.app.clipboardedge",       // Samsung Clipboard Edge
         "com.samsung.android.app.appsedge",            // Samsung Apps Edge
         "com.samsung.android.app.taskedge",            // Samsung Tasks Edge
-        "com.samsung.android.app.peopleedge"           // Samsung People Edge
+        "com.samsung.android.app.peopleedge",          // Samsung People Edge
+        "com.sec.android.app.popupcalculator"
     )
 
     /**
@@ -72,23 +118,36 @@ object WindowClassifier {
             }
         }
 
+        val lowerPkg = pkg.lowercase()
+
         // 3. Known System Overlays set check
-        if (KNOWN_SYSTEM_OVERLAYS.contains(pkg)) {
+        if (KNOWN_SYSTEM_OVERLAYS.contains(pkg) || KNOWN_SYSTEM_OVERLAYS.contains(lowerPkg)) {
             return WindowCategory.SYSTEM_UI
         }
 
-        // 4. Dynamic pattern matching for Samsung One UI & Android System overlays
-        if (pkg.startsWith("com.samsung.") && (
-            pkg.contains("edge", ignoreCase = true) ||
-            pkg.contains("capture", ignoreCase = true) ||
-            pkg.contains("smartclip", ignoreCase = true) ||
-            pkg.contains("bixby", ignoreCase = true) ||
-            pkg.contains("cocktail", ignoreCase = true)
+        // 4. Dynamic pattern matching for permission dialogs, pickers, and OEM system overlays
+        if (lowerPkg.contains("permissioncontroller") ||
+            lowerPkg.contains("documentsui") ||
+            lowerPkg.contains("providers.media.module") ||
+            lowerPkg.contains("intentresolver") ||
+            lowerPkg.contains("credentialmanager") ||
+            lowerPkg.contains("samsungpassautofill")
+        ) {
+            return WindowCategory.SYSTEM_UI
+        }
+
+        if (lowerPkg.startsWith("com.samsung.") && (
+            lowerPkg.contains("edge") ||
+            lowerPkg.contains("capture") ||
+            lowerPkg.contains("smartclip") ||
+            lowerPkg.contains("bixby") ||
+            lowerPkg.contains("cocktail") ||
+            lowerPkg.contains("telephonyui")
         )) {
             return WindowCategory.SYSTEM_UI
         }
 
-        if (pkg == "android" || pkg.startsWith("com.android.systemui")) {
+        if (lowerPkg == "android" || lowerPkg.startsWith("com.android.systemui")) {
             return WindowCategory.SYSTEM_UI
         }
 
