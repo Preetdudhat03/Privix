@@ -18,3 +18,6 @@
 
 # Preserve Coroutines & Reflection
 -keepattributes *Annotation*,InnerClasses,Signature,EnclosingMethod,SourceFile,LineNumberTable
+
+# Play Core / Split install (Deferred components)
+-dontwarn com.google.android.play.core.**
